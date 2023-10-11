@@ -18,6 +18,10 @@ enum class EColor
 {
 	White,
 	Black,
+	Brown,
+	Red,
+	Blue,
+	Count
 };
 
 struct Rabbit
@@ -26,9 +30,18 @@ struct Rabbit
 	EGender Gender;
 	EColor Color;
 
-	// Why is necessary to have a cast on Ecolor when is not necessary on EGeneder?
-	Rabbit() : Age(0), Gender(rand() % 2 == 0 ? EGender::Male : EGender::Female), 
-		Color(static_cast<EColor>(rand() % 2))
+	const static int MaxAge = 10;
+	const static int MinAdulthoodAge = 2;
+
+	Rabbit() : Age(0), Gender(static_cast<EGender>(rand() % 2)),
+		Color(static_cast<EColor>(rand() % static_cast<int>(EColor::Count)))
+	{
+		cout << "";
+		// SendAnalytics("New Rabbit");
+	}
+
+	Rabbit(EColor color) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
+		Color(color)
 	{
 		cout << "";
 		// SendAnalytics("New Rabbit");
@@ -41,104 +54,93 @@ struct Rabbit
 	*/
 };
 
+
+class World* GWorld;
+
 struct World
 {
 	std::vector<Rabbit> RabbitColony;
+	int Turn;
+
+	World() : Turn(0)
+	{
+	}
+
+	void IncreaseAnimalsAge()
+	{
+		for (Rabbit& rabbit : GWorld->RabbitColony)
+		{
+			rabbit.Age++;
+		}
+	}
+
+	bool CheckForMaleRabbit() const
+	{
+		for (const Rabbit& rabbit : GWorld->RabbitColony)
+		{
+			if (rabbit.Gender == EGender::Male)
+				return true;
+		}
+		return false;
+	}
+
+	void OnRabbitDied(Rabbit)
+	{
+	}
+
+	void Tick()
+	{
+		const bool isThereAMaleRabbit = CheckForMaleRabbit();
+
+		for (int i = 0; i < GWorld->RabbitColony.size(); ++i)
+		{
+			const Rabbit& rabbit = GWorld->RabbitColony[i];
+
+			if (rabbit.Age >= Rabbit::MaxAge)
+			{
+				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + i);
+				i--;
+			}
+			if (isThereAMaleRabbit)
+			{
+				if (rabbit.Age >= Rabbit::MinAdulthoodAge && rabbit.Gender == EGender::Female)
+				{
+					GWorld->RabbitColony.push_back(Rabbit(rabbit.Color));
+				}
+			}
+		}
+
+		// TODO: Don't increase the age of the newborn babies - they should stay at 0
+		IncreaseAnimalsAge();
+		Turn++;
+	}
+
+	void Print() const
+	{
+		// TODO: Print in a table
+		/*
+		| Age | Gender |  Color |
+		| --- | ------ | ------ |
+		| 1   | Male   | White  |
+
+		*/
+		const char* GenderNames[] = { "Male", "Female" };
+		const char* ColorNames[static_cast<int>(EColor::Count)] = { "White", "Black", "Brown", "Red", "Blue" };
+
+		for (const Rabbit& rabbit : GWorld->RabbitColony)
+		{
+			cout
+				<< "Age: " << rabbit.Age
+				<< ", Gender: " << GenderNames[static_cast<int>(rabbit.Gender)]
+				<< ", Colour: " << ColorNames[static_cast<int>(rabbit.Color)];
+		}
+	}
 };
 
 
-World* GWorld;
-int Turn;
-
-void Tick()
-{
-	cout << "";
-}
-
-
-
-
-void IncreaseAnimalsAge() {
-
-	for (Rabbit& Rabbit : GWorld->RabbitColony) {
-		Rabbit.Age++;
-	}
-}
-
-bool CheckForMaleRabbit() {
-	for (const Rabbit& rabbit : GWorld->RabbitColony) {
-		if (rabbit.Gender == EGender::Male)
-			
-		return true;
-			else
-				return false;
-	}
-}
-
-void RabbitDeath(Rabbit) {
-	for (Rabbit& rabbit : GWorld->RabbitColony) {
-		{
-
-		}
-	}
-}
-
-void RabbitLifeCycle() 
-{
-
-	for (int i = 0; i < GWorld->RabbitColony.size(); ++i) 
-	{
-		Rabbit& rabbit = GWorld->RabbitColony[i];
-
-		if (rabbit.Age >= 10) 
-		{ 
-			GWorld->RabbitColony.erase(GWorld->RabbitColony.begin()+i);
-		}
-		if (bool malerabbit = CheckForMaleRabbit) 
-		{
-			if (rabbit.Age >= 2 && rabbit.Gender == EGender::Female) 
-			{
-				EColor BabyColor = rabbit.Color;
-				GWorld->RabbitColony.push_back(Rabbit()); 
-				// how to sets mom color in constructor?? 
-				// work around
-				Rabbit& RabbitToChangeColor = GWorld->RabbitColony.back();
-				RabbitToChangeColor.Color = BabyColor;
-													
-			}
-		}
-	}
-
-}
-	
-
-
-
-int NextTurn() {
-	Turn++;
-
-	IncreaseAnimalsAge();
-	
-	return Turn;
-}
-
-
-
-void StampRabbitColony() {
-
-	for (const Rabbit& Rabbit : GWorld->RabbitColony) {
-		cout << "Age: " << Rabbit.Age << ", Gender: " << (Rabbit.Gender == EGender::Male ? "Maschio" : "Femmina") << ", Colore: " << (Rabbit.Color == EColor::White ? "Bianco" : "Marrone") << std::endl;
-	}
-}
-
 int main()
 {
-	//InitAnalytics();
-
-
 	char inputkey = 'a';
-
-
 
 	// Populating Colony
 	GWorld = new World();
@@ -148,55 +150,23 @@ int main()
 	GWorld->RabbitColony.push_back(Rabbit());
 	GWorld->RabbitColony.push_back(Rabbit());
 
-	// First Turn
-	//cout << "Turn number: " << Turn << "\n\n";
-	//StampRabbitColony();
-
-
-
 	// Timer Next Turn
 	while (true)
 	{
 		cout << "\n Press 'n' to move to the next turn";
 		inputkey = _getch();
 
-		if (inputkey == 'n') {
+		if (inputkey == 'n')
+		{
+			cout << "\n\nTurn number: " << GWorld->Turn << "\n";
 
-
-			int TurnNumber = 0;
-			cout << "\n\nTurn number: " << TurnNumber << "\n";
-
-
-			RabbitLifeCycle();
-			StampRabbitColony();
-			TurnNumber = NextTurn();
-
-
+			GWorld->Print();
+			GWorld->Tick();
 			// std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
 
 		}
 	}
 
-
-
-
-
-
-	/*
-	while (true)
-	{
-		Tick();
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-	}
-	*/
-
-
-
-
-
 	delete GWorld;
 	return 0;
-
 }
