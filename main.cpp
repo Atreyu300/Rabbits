@@ -33,15 +33,17 @@ enum class ENamesFemale // 20 Female Names
 {
 	Olivia, Emma, Charlotte, Amelia, Sophia, Isabella, Ava, Mia, Evelyn, Luna, Harper, Camila, Sofia, Scarlett, Elizabeth, Elanor, Emily, Aria, Nami, 
 
-}; 
+};
 
-
+// What happens to mother and the murderer? How do we know if they are still alive?
 struct Rabbit
 {
 	int Age;
 	EGender Gender;
 	EColor Color;
 	bool Vampire;
+
+	Rabbit* Mother;
 
 	const static int MaxAge = 10;
 	const static int MinAdulthoodAge = 2;
@@ -73,7 +75,6 @@ class World* GWorld;
 struct World
 {
 	std::vector<Rabbit> RabbitColony;
-	std::vector<Rabbit> RadioActiveColony;
 	int Turn;
 	const int MaxRabbits = 1000;
 
@@ -103,9 +104,10 @@ struct World
 	{
 		for (const Rabbit& rabbit : GWorld->RabbitColony) 
 		{
-			if (rabbit.Vampire) {
+			if (rabbit.Vampire)
+			{
 				return true;
-		}
+			}
 			
 		}
 		return false;
@@ -118,24 +120,37 @@ struct World
 		{
 			//Check for Vampire Rabbit Number
 			int VampireRabbit = 0;
-			for (const Rabbit& rabbit : GWorld->RabbitColony) 
+			for (const Rabbit& rabbit : GWorld->RabbitColony)
 			{
-				if (rabbit.Vampire) 
-				{ VampireRabbit++; };
+				if (rabbit.Vampire)
+				{
+					VampireRabbit++;
+				}
 			}
 
 			int TotalRabbitInfected = 0;
 			for (int x=0; x <= VampireRabbit; x++)
 			{
+				// 1. Always infect the first non-vampire
+				// + always finding a target to infect, no need to loop
+				// - non-random, always infects the oldest rabbits first
+				// 2. Keep a list of non-vampire rabbits, rand in that list
+				// + always finding a target to infect, no need to loop
+				// - have to make sure list is up-to-date which makes code more complex
+				// 3. Just do rand, if rand index is already a vampire do nothing
+				// 4. Loop until a non-vampire is found
+				// + we should find in a target, but have to loop
+				// + simple code
+				// - what happens if there are too many vampires
+				// 5. Same like option 4, but loop no more than 10 times, if no targets found give up
+				//
+				// Option 3:
+				int RandomRabbitIndex = RandomRabbitIndex = (rand() % GWorld->RabbitColony.size());
 				
-				int randomrabbit = (rand() % GWorld->RabbitColony.size());
-				
-				if (!GWorld->RabbitColony[randomrabbit].Vampire)
+				if (!GWorld->RabbitColony[RandomRabbitIndex].Vampire)
 				{
-					GWorld->RabbitColony[randomrabbit].Vampire = true;
+					GWorld->RabbitColony[RandomRabbitIndex].Vampire = true;
 					TotalRabbitInfected++;
-					
-					
 				}
 
 			}
@@ -150,11 +165,8 @@ struct World
 		
 		int HalfColony = GWorld->RabbitColony.size() / 2;
 		for (int i = 0; i < HalfColony; i++)
-		
 		{
-		GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + (rand() % HalfColony));
-		
-
+			GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + (rand() % GWorld->RabbitColony.size()));
 		}
 		cout << "\nTotal rabbit: " << GWorld->RabbitColony.size() << "\n";
 
@@ -185,47 +197,35 @@ struct World
 		{
 			KillHalfColony();
 		}
-		
-		
 
 		for (int i = 0; i < GWorld->RabbitColony.size(); ++i)
 		{
-			
 			const Rabbit& rabbit = GWorld->RabbitColony[i];
 
 			// Rabbits death
+			const bool ShouldDie =
+				(rabbit.Age >= Rabbit::MaxAge && !rabbit.Vampire) ||
+				(rabbit.Age >= Rabbit::VampireMaxAge && rabbit.Vampire);
 
-			if (rabbit.Age >= Rabbit::MaxAge && !rabbit.Vampire)
+			if (ShouldDie)
 			{
 				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + i);
 				i--;
-				cout << "A rabbit is dead!";
-			}
-			if (rabbit.Age >= Rabbit::VampireMaxAge && rabbit.Vampire)
-			{
-				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + i);
-				i--;
-				cout << "A vampire rabbit is dead!";
+				cout << "A rabbit is dead! Vampire? " << rabbit.Vampire << "\n";
 			}
 
 			// Rabbits breeding
 
-			if (isThereAMaleRabbit)
+			const bool ShouldGiveBirth = isThereAMaleRabbit &&
+				rabbit.Age >= Rabbit::MinAdulthoodAge &&
+				rabbit.Gender == EGender::Female &&
+				!rabbit.Vampire;
+
+			if (ShouldGiveBirth)
 			{
-				if (rabbit.Age >= Rabbit::MinAdulthoodAge && rabbit.Gender == EGender::Female && !rabbit.Vampire)
-				{
-					if ((rand() % 100)+1 <= 2) 
-					{
-						GWorld->RabbitColony.push_back(Rabbit(rabbit.Color, true));
-						cout << "A baby Vampire rabbit is born!";
-					}
-					else 
-					{
-						GWorld->RabbitColony.push_back(Rabbit(rabbit.Color, false));
-						cout << "A baby rabbit is born!";
-					}
-				}
-				
+				const bool ShouldSpawnVampire = (rand() % 100) + 1 <= 2;
+				GWorld->RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire));
+				cout << "A baby rabbit is born! Vampire? " << ShouldSpawnVampire << "\n";
 			}
 			
 		}
@@ -257,21 +257,22 @@ struct World
 
 		for (const Rabbit& rabbit : GWorld->RabbitColony)
 		{
-			
-
-			if (rabbit.Vampire == false) {
+			if (!rabbit.Vampire) {
 				// Male Print
-				if (rabbit.Gender == EGender::Male) {
+				if (rabbit.Gender == EGender::Male)
+				{
 					cout << "|  " << rabbit.Age << "  "
 						<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "     " // Just more space then Female
 						<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
 				}
 				else
+				{
 					// Female Print
 					cout
-					<< "|  " << rabbit.Age << "  "
-					<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "   "
-					<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
+						<< "|  " << rabbit.Age << "  "
+						<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "   "
+						<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
+				}
 			}
 
 
@@ -284,17 +285,20 @@ struct World
 			if (rabbit.Vampire)
 			{
 				
-				if (rabbit.Gender == EGender::Male) {
+				if (rabbit.Gender == EGender::Male)
+				{
 					cout << "|  " << rabbit.Age << "  "
 						<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "     " // Just more space then Female
 						<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
 				}
 				else
+				{
 					// Female Print
 					cout
-					<< "|  " << rabbit.Age << "  "
-					<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "   "
-					<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
+						<< "|  " << rabbit.Age << "  "
+						<< "| " << GenderNames[static_cast<int>(rabbit.Gender)] << "   "
+						<< "| " << ColorNames[static_cast<int>(rabbit.Color)] << "  | \n";
+				}
 			}
 		}
 		cout << "\n\n";
@@ -311,13 +315,31 @@ int main()
 	// Populating Colony
 	GWorld = new World();
 
-	
+
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 
+	/*
+
+	// | Rabbit0 | Rabbit1 | Rabbit 2 | Rabbit3
+	// b.Mother = &GWorld->RabbitColony[1];
+	Rabbit r1;
+	Rabbit r2;
+	Rabbit r3;
+	// | r1|r2|r3|
+	std::vector<Rabbit> rs;
+	rs.push_back(Rabbit());
+	rs.push_back(Rabbit()); // rs1
+	rs.push_back(Rabbit());
+	// | rs_0 | rs_1 | rs_2 |
+	Rabbit* rs1p = &rs[1]; // 110
+	rs.erase(rs.begin() + 1);
+	rs1p->Age = 5; // modifying rs2!
+
+	*/
 
 	// Timer Next Turn
 	while (true)
