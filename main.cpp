@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <conio.h>
 #include <vector>
@@ -5,6 +6,12 @@
 #include <chrono>
 #include <thread>
 
+// TODO:
+// - Read on lambdas
+// - Read on pointers
+// - rename all functions to have verbs as names (e.g. "FeedFoxes", "BreedFoxes", etc.)
+// - do the todos in the code
+// - [optional] use <algorithm> functions and lambdas to make code simpler
 
 
 using namespace std;
@@ -47,6 +54,7 @@ struct Rabbit
 	int GhostTurn = 0;
 	int MaxGhostTurn = 5;
 
+	// TODO: Implement mother
 	Rabbit* Mother;
 
 	const static int MaxAge = 10;
@@ -68,6 +76,11 @@ struct Rabbit
 		Color(color), Vampire(vampire)
 	{}
 
+	bool IsGhost() const
+	{
+		return GhostTurn != 0;
+	}
+
 	// SendAnalytics("New Rabbit");
 	
 	/*~Rabbit()
@@ -88,6 +101,9 @@ struct Fox
 
 	const static int MaxAge = 20;
 	const static int HuntAge = 2;
+	// TODO: This has to be haunted, not infected
+	// TODO: Add names
+	// TODO: For haunted foxes, print their ghost
 	int InfectionTurn = 0;
 	const static int MaxInfectionTurn = 5;
 	bool Breeded = false;
@@ -127,11 +143,11 @@ struct World
 	
 	void IncreaseAnimalsAge()
 	{
-		for (Rabbit& rabbit : GWorld->RabbitColony)
+		for (Rabbit& rabbit : RabbitColony)
 		{
 			rabbit.Age++;
 		}
-		for (Fox& fox : GWorld->FoxColony) {
+		for (Fox& fox : FoxColony) {
 
 			fox.Age++;
 		}
@@ -139,23 +155,20 @@ struct World
 
 	bool CheckForMaleRabbit() const
 	{
-		for (const Rabbit& rabbit : GWorld->RabbitColony)
-		{
-			if (rabbit.Gender == EGender::Male && !rabbit.Vampire)
-				return true;
-		}
-		return false;
+		std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+			{
+				return rabbit.Gender == EGender::Male && !rabbit.Vampire;
+			});
 	}
 
 	bool CheckForVampireRabbit() const 
 	{
-		for (const Rabbit& rabbit : GWorld->RabbitColony) 
+		for (const Rabbit& rabbit : RabbitColony) 
 		{
 			if (rabbit.Vampire)
 			{
 				return true;
 			}
-			
 		}
 		return false;
 		cout << "No Vampire rabbit";
@@ -167,7 +180,7 @@ struct World
 		{
 			//Check for Vampire Rabbit Number
 			int VampireRabbit = 0;
-			for (const Rabbit& rabbit : GWorld->RabbitColony)
+			for (const Rabbit& rabbit : RabbitColony)
 			{
 				if (rabbit.Vampire)
 				{
@@ -192,11 +205,11 @@ struct World
 				// 5. Same like option 4, but loop no more than 10 times, if no targets found give up
 				//
 				// Option 3:
-				int RandomRabbitIndex = RandomRabbitIndex = (rand() % GWorld->RabbitColony.size());
+				int RandomRabbitIndex = RandomRabbitIndex = (rand() % RabbitColony.size());
 				
-				if (!GWorld->RabbitColony[RandomRabbitIndex].Vampire)
+				if (!RabbitColony[RandomRabbitIndex].Vampire)
 				{
-					GWorld->RabbitColony[RandomRabbitIndex].Vampire = true;
+					RabbitColony[RandomRabbitIndex].Vampire = true;
 					TotalRabbitInfected++;
 				}
 
@@ -207,27 +220,27 @@ struct World
 	
 	void CheckForMaxRabbit() 
 	{	
-		if ((GWorld->RabbitColony.size() >= MaxRabbits)) {
-			cout << "\nTotal rabbit: " << GWorld->RabbitColony.size() << "\n";
+		if (RabbitColony.size() >= MaxRabbits) {
+			cout << "\nTotal rabbit: " << RabbitColony.size() << "\n";
 			cout << "\nToo much rabbits, low food. Killing half colony.. \n";
 
-			int HalfColony = GWorld->RabbitColony.size() / 2;
+			int HalfColony = RabbitColony.size() / 2;
 			for (int i = 0; i < HalfColony; i++)
 			{
-				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + (rand() % GWorld->RabbitColony.size()));
+				RabbitColony.erase(RabbitColony.begin() + (rand() % RabbitColony.size()));
 			}
-			cout << "\nTotal rabbit: " << GWorld->RabbitColony.size() << "\n";
+			cout << "\nTotal rabbit: " << RabbitColony.size() << "\n";
 		}
 	}
 
 	void FoxesHaveLowFood()
 	{
-		int MissingFood = GWorld->FoxColony.size() - GWorld->RabbitColony.size();
+		int MissingFood = FoxColony.size() - RabbitColony.size();
 		
 		for (int i = 0; i < MissingFood; i++) 
 		{
-			int CasualFox = rand() % GWorld->FoxColony.size();
-			GWorld->FoxColony.erase(GWorld->FoxColony.begin() + CasualFox);
+			int CasualFox = rand() % FoxColony.size();
+			FoxColony.erase(FoxColony.begin() + CasualFox);
 			cout << "\nA Fox is dead by starving..";
 		}
 	}
@@ -235,26 +248,41 @@ struct World
 
 	void RabbitEating() 
 	{
-		for (Rabbit& rabbit : GWorld->RabbitColony)
-
-			GWorld->Grass.Quantity = ( (GWorld->Grass.Quantity - rabbit.Hungry) <= 0 ? 0 : GWorld->Grass.Quantity - rabbit.Hungry); // Why clamp doesn't work??
+		for (Rabbit& rabbit : RabbitColony)
+		{
+			Grass.Quantity = std::max(0, Grass.Quantity - rabbit.Hungry);
+		}
 		
 	}
 	void DecreasingRabbitGhostTurn()
 	{
-		for (int i = 0; i < GWorld->RabbitGhostColony.size(); i++)
+		auto removalIt = std::remove_if(RabbitGhostColony.begin(), RabbitGhostColony.end(), [](Rabbit& rabbit)
+			{
+				if (rabbit.IsGhost())
+				{
+					rabbit.GhostTurn--;
+					return rabbit.GhostTurn == 0;
+				}
+				return false;
+			});
+		RabbitGhostColony.erase(removalIt, RabbitGhostColony.end());
 
-			// (Rabbit& rabbit : GWorld->RabbitGhostColony)
+		/* CODE ABOVE EQUIVALENT TO CODE BELOW
+		for (int i = 0; i < RabbitGhostColony.size(); i++)
+
+			// (Rabbit& rabbit : RabbitGhostColony)
 		{
-			Rabbit& rabbit = GWorld->RabbitGhostColony[i];
+			Rabbit& rabbit = RabbitGhostColony[i];
 
 			if (rabbit.GhostTurn != 0)
 			{
 				rabbit.GhostTurn--;
 				if (rabbit.GhostTurn == 0)
 				{
-					
-					GWorld->RabbitGhostColony.erase(GWorld->RabbitGhostColony.begin() + i);
+					RabbitGhostColony.erase(RabbitGhostColony.begin() + i);
+					// Be careful when modifying vectors while looping over them
+					// If you must, be very careful about what happens to the indices
+					i--;
 					cout << "\nGhost rabbit goes to the afterlife!"; //   * When the 5 turns expire, "Ghost rabbit X goes to the afterlife!" - needs to be printed on screen. (We haven't names yet)
 
 					// rabbit.mother 
@@ -263,46 +291,40 @@ struct World
 
 			}
 		}
+		*/
 	}
 	
 	void GrassGrown() 
 	{
-		if (GWorld->Grass.Quantity <= Grass.MaxQuantity)
+		if (Grass.Quantity <= Grass.MaxQuantity)
 		{
-			GWorld->Grass.Quantity++;
+			Grass.Quantity++;
 		}
 	}
 	void CheckForEnoughGrass() 
 	{
 		int NecessaryFood = 0;
-		for (Rabbit& rabbit : GWorld->RabbitColony)
+		std::vector<Rabbit>& Colony = RabbitColony;
+		for (const Rabbit& rabbit : Colony)
 		{
-		
-		NecessaryFood = NecessaryFood + rabbit.Hungry;
-		
-					
+			NecessaryFood = NecessaryFood + rabbit.Hungry;
 		}
-		if (GWorld->Grass.Quantity < NecessaryFood)
+
+		if (Grass.Quantity < NecessaryFood)
 		{
 			cout << "\nNot enough grass for rabbits. Some rabbit will die.";
-			int FoodDifference = NecessaryFood - GWorld->Grass.Quantity;
-			for (int i = 0; i < FoodDifference; i++) 
+			int FoodDifference = NecessaryFood - Grass.Quantity;
+			int FoodToEat = 0;
+			for (int i = 0; i < FoodDifference && !Colony.empty(); i++, FoodDifference -= FoodToEat)
 			{
-				int RandomRabbitIndex = rand() % GWorld->RabbitColony.size();
+				int RandomRabbitIndex = rand() % Colony.size();
 
-				
-				Rabbit& Rabbit = GWorld->RabbitColony[RandomRabbitIndex];
-				FoodDifference = FoodDifference - Rabbit.Hungry;
-				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + RandomRabbitIndex);
+				Rabbit& Rabbit = Colony[RandomRabbitIndex];
+				FoodToEat = Rabbit.Hungry;
+				Colony.erase(Colony.begin() + RandomRabbitIndex);
 				cout << "\nA Rabbit is dead for starving..";
 			}
-			
-			
-
-
 		}
-
-		
 	}
 	 
 	void OnRabbitDied(Rabbit)
@@ -310,117 +332,74 @@ struct World
 	}
 
 	
-	int TotalVampireRabbit() {
-		int TotalRabbitVampire = 0;
-		
-		for (const Rabbit& rabbit : GWorld->RabbitColony)
-		{
-
-			if (rabbit.Vampire)
+	int TotalVampireRabbit() const
+	{
+		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
 			{
-				TotalRabbitVampire++;
-			}
-			
-		}
-		return TotalRabbitVampire;
+				return rabbit.Vampire;
+			});
 	}
 
-	int TotalGhostRabbit() {
-		int TotalRabbitGhost = 0;
-
-		for (const Rabbit& rabbit : GWorld->RabbitColony)
-		{
-
-			if (rabbit.GhostTurn!=0)
+	int TotalGhostRabbit() const
+	{
+		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
 			{
-				TotalRabbitGhost++;
-			}
-
-		}
-		return TotalRabbitGhost;
+				return rabbit.IsGhost();
+			});
 	}
-	
-
-	
-
-
-
-
-
 
 	void ForEating()
 	{
-		bool EnoughFood = GWorld->RabbitColony.size() > GWorld->RabbitColony.size();
+		bool EnoughFood = RabbitColony.size() > RabbitColony.size();
 		if (!EnoughFood)
 		{
 			FoxesHaveLowFood();
 		}
 	
-		for (int i = 0; i < GWorld->FoxColony.size(); i++) // <-- moved to usual for because i was not able to find object reference. Does TArray help on that?
-			//(Fox& fox : GWorld->FoxColony) 
+		for (int i = 0; i < FoxColony.size(); i++) // <-- moved to usual for because i was not able to find object reference. Does TArray help on that?
+			//(Fox& fox : FoxColony) <-- THIS ONLY WORKS IF YOU DON'T MODIFY THE VECTOR
 		{
-		
-			int RandomRabbitIndex = rand() % GWorld->RabbitColony.size();
-			Rabbit& rabbit = GWorld->RabbitColony[RandomRabbitIndex]; // what's happen if i taking this random rabbit and the rabbit2 is deleted? that random can be not the same anymore?
+			int RandomRabbitIndex = rand() % RabbitColony.size();
+			Rabbit& rabbit = RabbitColony[RandomRabbitIndex]; // what's happen if i taking this random rabbit and the rabbit2 is deleted? that random can be not the same anymore?
 			
-			if ((GWorld->FoxColony[i].Age >= GWorld->FoxColony[i].HuntAge) && (rabbit.GhostTurn = !0))
+			if (FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost())
 			{
-				
-				if ((GWorld->Grass.Quantity < ((GWorld->Grass.MaxQuantity*20)/100)) && (rand() % 100 < 50))
+				if (Grass.Quantity < Grass.MaxQuantity*20/100 && rand() % 100 < 50)
 				{
-					int RandomRabbitIndex2 = rand() % GWorld->RabbitColony.size();
-					Rabbit& rabbit2 = GWorld->RabbitColony[RandomRabbitIndex2];
+					// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
+					// TODO: Move chance code to a function - RandomChance(50), RandomChance(30)
+					int RandomRabbitIndex2 = rand() % RabbitColony.size();
+					Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
 					rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
-					GWorld->RabbitGhostColony.push_back(rabbit2);// <-- what i'm doing here? moving from vector to vector o coping it? There are two same rabbit in two different vector?
-					//GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + RandomRabbitIndex2); <-- causing crash!
+					RabbitGhostColony.push_back(rabbit2);// <-- what i'm doing here? moving from vector to vector o coping it? There are two same rabbit in two different vector?
+					//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex2); <-- causing crash!
 					cout << "\nA Rabbit is turned to ghost.";
-					
 				}
-				
-				
+
 				rabbit.GhostTurn = rabbit.MaxGhostTurn;
-				GWorld->RabbitGhostColony.push_back(rabbit);
-				//GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + RandomRabbitIndex); <-- ??
+				RabbitGhostColony.push_back(rabbit);
+				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- ??
 				cout << "\nA Rabbit is turned to ghost.";
 
-				if (!rabbit.Vampire) 
-				
+				FoxColony[i].InfectionTurn = FoxColony[i].MaxInfectionTurn;
+				if (rabbit.Vampire && (rand() % 100 < 30))
 				{
-					
-					GWorld->FoxColony[i].InfectionTurn = GWorld->FoxColony[i].MaxInfectionTurn;
-					
+					FoxColony.erase(FoxColony.begin() + i);
 				}
-				else 
-				{
-					
-					if ((rand() % 100 < 30))
-					{
-					GWorld->FoxColony.erase(GWorld->FoxColony.begin() +	i);
-					}
-					
-
-				}
-			
-
-			//GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + RandomRabbitIndex);
-
 			}
-
 		}
-
 	}
 
 	void FoxBreeding() 
 	{
-		for (Fox& malefox : GWorld->FoxColony)
+		for (Fox& malefox : FoxColony)
 		{
-			
 			if ((malefox.Gender == EGender::Male) 
 				&& (!malefox.Breeded) 
 				&& (malefox.InfectionTurn!=0)
 				&& (malefox.Age >=malefox.MinAdulthoodAge))
 			{
-				for (Fox& femalefox : GWorld->FoxColony)
+				for (Fox& femalefox : FoxColony)
 				{
 					if ((femalefox.Gender == EGender::Female) 
 						&& (!femalefox.Breeded)
@@ -429,13 +408,12 @@ struct World
 					{
 						malefox.Breeded = true;
 						femalefox.Breeded = true;
-						GWorld->FoxColony.push_back(Fox());
-						
+						FoxColony.push_back(Fox());
 					}
 				}
 			}
 		}
-		for (Fox& fox : GWorld->FoxColony) 
+		for (Fox& fox : FoxColony) 
 		{
 			fox.Breeded = false;
 		}
@@ -445,13 +423,13 @@ struct World
 
 	void DecreaseInfection()
 	{
-		for (Rabbit& rabbit : GWorld->RabbitColony)
+		for (Rabbit& rabbit : RabbitColony)
 
 			{
 				(rabbit.GhostTurn > 0) ? rabbit.GhostTurn-- : rabbit.GhostTurn;
 			}
 
-		for (Fox& fox : GWorld->FoxColony)
+		for (Fox& fox : FoxColony)
 
 			{
 				(fox.InfectionTurn > 0) ? fox.InfectionTurn-- : fox.InfectionTurn;
@@ -462,9 +440,9 @@ struct World
 	void RabbitLifeCycle() 
 	{
 		const bool isThereAMaleRabbit = CheckForMaleRabbit();
-		for (int i = 0; i < GWorld->RabbitColony.size(); ++i)
+		for (int i = 0; i < RabbitColony.size(); ++i)
 		{
-			const Rabbit& rabbit = GWorld->RabbitColony[i];
+			const Rabbit& rabbit = RabbitColony[i];
 
 			// Rabbits death
 			const bool ShouldDie =
@@ -473,7 +451,7 @@ struct World
 
 			if (ShouldDie)
 			{
-				GWorld->RabbitColony.erase(GWorld->RabbitColony.begin() + i);
+				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
 				cout << "A rabbit is dead! Vampire? " << rabbit.Vampire << "\n";
 			}
@@ -488,7 +466,7 @@ struct World
 			if (ShouldGiveBirth)
 			{
 				const bool ShouldSpawnVampire = (rand() % 100) + 1 <= 2;
-				GWorld->RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire));
+				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire));
 				cout << "\bA baby rabbit is born! Vampire? " << ShouldSpawnVampire << "\n";
 			}
 		}
@@ -498,7 +476,7 @@ struct World
 	int RabbitColonyWithoutGhosts() 
 	{
 		int x = 0;
-		for (Rabbit& rabbit : GWorld->RabbitColony)
+		for (Rabbit& rabbit : RabbitColony)
 			if (rabbit.GhostTurn>=1)
 			{
 				x++;
@@ -514,7 +492,7 @@ struct World
 
 
 		// Check if Rabbit colony is empty
-		if (GWorld->RabbitColony.empty()) {
+		if (RabbitColony.empty()) {
 
 			cout << "The rabbit colony is dead!";
 			exit;
@@ -551,23 +529,50 @@ struct World
 		const char* GenderNames[] = { "Male", "Female" };
 		const char* ColorNames[static_cast<int>(EColor::Count)] = { "White", "Black", "Brown", "Red", "Blue" };
 		
-		int TotalRabbitVampire = GWorld->TotalVampireRabbit(); // Should be outside of World..? Imho yes
-		int TotalRabbitGhost = GWorld->TotalGhostRabbit();
+		int TotalRabbitVampire = TotalVampireRabbit(); // Should be outside of World..? Imho yes
+		int TotalRabbitGhost = TotalGhostRabbit();
 
 		// Print 
 
 		//cout << "\n Total Vampire Rabbit: " << (TotalRabbitVampire == 0) ? 0 : TotalRabbitVampire;
-		cout << "\nTotal Grass: " << GWorld->Grass.Quantity;
-		cout << "\nTotal Rabbit Colony: " << GWorld->RabbitColony.size() << " Vampire: " << TotalRabbitVampire << " Ghost: " << TotalRabbitGhost;
-		cout << "\nTotal Foxes: " << GWorld->FoxColony.size();
+		cout << "\nTotal Grass: " << Grass.Quantity;
+		cout << "\nTotal Rabbit Colony: " << RabbitColony.size() << " Vampire: " << TotalRabbitVampire << " Ghost: " << TotalRabbitGhost;
+		cout << "\nTotal Foxes: " << FoxColony.size();
 		cout << "\n\n";
 	}
 };
 
+int Add(int x, int y)
+{
+	return x + y;
+}
 
 int main()
 {
-	
+	/*
+	std::vector<int> v = { 1, 2, 3, 4, 5, 6 };
+	std::sort(v.begin(), v.end());
+	std::vector<int> squaredV;
+	std::transform(v.begin(), v.end(), squaredV.begin(), [](const int& num)
+		{
+			return num * num;
+		});
+
+
+	int base = 10;
+	auto add = [&](int x, int y)
+	{
+		return base + x + y;
+	};
+
+	for (int i = 0; i < 10; i++)
+	{
+		cout << add(2, 3) << " "; // 15 16...
+		base++;
+	}
+
+	*/
+
 	//srand(static_cast<unsigned>(time(0))); // Born all females??
 
 	char inputkey = 'a';
