@@ -155,7 +155,7 @@ struct World
 
 	bool CheckForMaleRabbit() const
 	{
-		std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
 			{
 				return rabbit.Gender == EGender::Male && !rabbit.Vampire;
 			});
