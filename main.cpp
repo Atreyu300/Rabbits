@@ -43,6 +43,9 @@ enum class ENamesFemale // 20 Female Names
 
 };
 
+vector<string>NamesMale = { "Michael", "Joe", "Nick", "Stephen", "Henry", "William", "Levi", "Jack", "Owen", "Leo", "Ethan", "Lucas", "Benjamin", "Liam", "Samuel", "Luke", "Elia", "Thomas", "Brad", "Jake"};
+vector<string>NamesFemale = { "Olivia", "Emma", "Charlotte", "Amelia", "Sophia", "Isabella", "Ava", "Mia", "Evelyn", "Luna", "Harper", "Camila", "Sofia", "Scarlett", "Elizabeth", "Elanor", "Emily", "Aria", "Nami"};
+
 // What happens to mother and the murderer? How do we know if they are still alive?
 struct Rabbit
 {
@@ -51,6 +54,29 @@ struct Rabbit
 	EColor Color;
 	bool Vampire;
 	
+	int randomindex;
+	string Name = "";
+	
+	
+	void SetRandomName ()
+	{
+	if (Gender == EGender::Male) // there is a way to check what's value has this Gender on runtime wihtout cout?
+	
+		{
+		
+		randomindex = rand() % NamesMale.size();
+		Name = NamesMale[randomindex];
+		}
+		else
+			{
+			randomindex = rand() % NamesFemale.size();
+			Name = NamesFemale[randomindex];
+			}
+	}
+	
+	
+
+
 	int GhostTurn = 0;
 	int MaxGhostTurn = 5;
 
@@ -74,7 +100,9 @@ struct Rabbit
 
 	Rabbit(EColor color, bool vampire) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
 		Color(color), Vampire(vampire)
-	{}
+	{
+		SetRandomName();
+	}
 
 	bool IsGhost() const
 	{
@@ -453,7 +481,9 @@ struct World
 			{
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
-				cout << "A rabbit is dead! Vampire? " << rabbit.Vampire << "\n";
+				string Name = " ";
+				
+				cout << "A rabbit named is dead! Vampire? " << rabbit.Vampire << "\n";
 			}
 
 			// Rabbits breeding
@@ -467,7 +497,9 @@ struct World
 			{
 				const bool ShouldSpawnVampire = (rand() % 100) + 1 <= 2;
 				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire));
-				cout << "\bA baby rabbit is born! Vampire? " << ShouldSpawnVampire << "\n";
+				string Name = " ";
+				//if (!rabbit.Name.empty()) { Name = rabbit.Name; }
+				cout << "\bA baby rabbit named " /* << rabbit.Name */ << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
 			}
 		}
 	}
@@ -542,10 +574,7 @@ struct World
 	}
 };
 
-int Add(int x, int y)
-{
-	return x + y;
-}
+
 
 int main()
 {
