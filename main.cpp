@@ -46,6 +46,8 @@ enum class ENamesFemale // 20 Female Names
 vector<string>NamesMale = { "Michael", "Joe", "Nick", "Stephen", "Henry", "William", "Levi", "Jack", "Owen", "Leo", "Ethan", "Lucas", "Benjamin", "Liam", "Samuel", "Luke", "Elia", "Thomas", "Brad", "Jake"};
 vector<string>NamesFemale = { "Olivia", "Emma", "Charlotte", "Amelia", "Sophia", "Isabella", "Ava", "Mia", "Evelyn", "Luna", "Harper", "Camila", "Sofia", "Scarlett", "Elizabeth", "Elanor", "Emily", "Aria", "Nami"};
 
+
+
 // What happens to mother and the murderer? How do we know if they are still alive?
 struct Rabbit
 {
@@ -55,33 +57,13 @@ struct Rabbit
 	bool Vampire;
 	
 	int randomindex;
-	string Name = "";
+	string Name = "TempName";
 	
-	
-	void SetRandomName ()
-	{
-	if (Gender == EGender::Male) // there is a way to check what's value has this Gender on runtime wihtout cout?
-	
-		{
-		
-		randomindex = rand() % NamesMale.size();
-		Name = NamesMale[randomindex];
-		}
-		else
-			{
-			randomindex = rand() % NamesFemale.size();
-			Name = NamesFemale[randomindex];
-			}
-	}
-	
-	
-
-
 	int GhostTurn = 0;
 	int MaxGhostTurn = 5;
 
 	// TODO: Implement mother
-	Rabbit* Mother;
+	string MotherName = "TempName";
 
 	const static int MaxAge = 10;
 	const static int MinAdulthoodAge = 2;
@@ -91,6 +73,7 @@ struct Rabbit
 
 	const static int VampireHungry = 4;
 
+	// Constructors 
 	Rabbit() : Age(0), Gender(static_cast<EGender>(rand() % 2)),
 		Color(static_cast<EColor>(rand() % static_cast<int>(EColor::Count)))
 	{}
@@ -98,11 +81,33 @@ struct Rabbit
 	Rabbit(EColor color) : Age(0), Gender(static_cast<EGender>(rand() % 2))
 	{}
 
-	Rabbit(EColor color, bool vampire) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
-		Color(color), Vampire(vampire)
+	Rabbit(EColor color, bool vampire, string motherName) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
+		Color(color), Vampire(vampire), MotherName(motherName)
 	{
-		SetRandomName();
+		SetRandomName(); // Only females??
 	}
+
+	// Functions 
+
+	void SetRandomName()
+	{
+		if (Gender == EGender::Male) // there is a way to check what's value has this Gender on runtime wihtout cout?
+
+		{
+
+			randomindex = rand() % NamesMale.size();
+			Name = NamesMale[randomindex];
+			//cout << "\n" << Name;
+		}
+		else
+		{
+			randomindex = rand() % NamesFemale.size();
+			Name = NamesFemale[randomindex];
+			//cout << "\n" << Name;
+		}
+	}
+
+
 
 	bool IsGhost() const
 	{
@@ -376,7 +381,7 @@ struct World
 			});
 	}
 
-	void ForEating()
+	void FoxEat()
 	{
 		bool EnoughFood = RabbitColony.size() > RabbitColony.size();
 		if (!EnoughFood)
@@ -465,6 +470,7 @@ struct World
 		
 	}
 
+	
 	void RabbitLifeCycle() 
 	{
 		const bool isThereAMaleRabbit = CheckForMaleRabbit();
@@ -479,11 +485,12 @@ struct World
 
 			if (ShouldDie)
 			{
+				
+				string Name = rabbit.Name;
+				
+				cout << "A rabbit named " << Name << " is dead!Vampire ? " << rabbit.Vampire << "\n";
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
-				string Name = " ";
-				
-				cout << "A rabbit named is dead! Vampire? " << rabbit.Vampire << "\n";
 			}
 
 			// Rabbits breeding
@@ -496,10 +503,14 @@ struct World
 			if (ShouldGiveBirth)
 			{
 				const bool ShouldSpawnVampire = (rand() % 100) + 1 <= 2;
-				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire));
+				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire,rabbit.Name));
+				// cout << "\nMom Rabbit name " << rabbit.Name;
+
+
+
 				string Name = " ";
 				//if (!rabbit.Name.empty()) { Name = rabbit.Name; }
-				cout << "\bA baby rabbit named " /* << rabbit.Name */ << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
+				cout << "\bA baby rabbit named " /* << Name */ << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
 			}
 		}
 	}
@@ -541,7 +552,7 @@ struct World
 		RabbitEating();
 				
 		FoxBreeding();
-		ForEating();
+		FoxEat();
 
 		VampireRabbitInfection();
 		IncreaseAnimalsAge();
@@ -611,22 +622,13 @@ int main()
 
 	
 	
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+
 	GWorld->FoxColony.push_back(Fox());
 	GWorld->FoxColony.push_back(Fox());
 	GWorld->FoxColony.push_back(Fox());
