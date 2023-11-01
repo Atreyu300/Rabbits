@@ -9,6 +9,11 @@
 // TODO:
 // - Read on lambdas
 // - Read on pointers
+// - Read on vectors - how would you write your own vector if I asked you?
+// class vector
+// {
+//		???
+// }
 // - rename all functions to have verbs as names (e.g. "FeedFoxes", "BreedFoxes", etc.)
 // - do the todos in the code
 // - [optional] use <algorithm> functions and lambdas to make code simpler
@@ -46,7 +51,12 @@ enum class ENamesFemale // 20 Female Names
 vector<string>NamesMale = { "Michael", "Joe", "Nick", "Stephen", "Henry", "William", "Levi", "Jack", "Owen", "Leo", "Ethan", "Lucas", "Benjamin", "Liam", "Samuel", "Luke", "Elia", "Thomas", "Brad", "Jake"};
 vector<string>NamesFemale = { "Olivia", "Emma", "Charlotte", "Amelia", "Sophia", "Isabella", "Ava", "Mia", "Evelyn", "Luna", "Harper", "Camila", "Sofia", "Scarlett", "Elizabeth", "Elanor", "Emily", "Aria", "Nami"};
 
-
+enum class DataType
+{
+	Fox,
+	Rabbit,
+	Grass
+};
 
 // What happens to mother and the murderer? How do we know if they are still alive?
 struct Rabbit
@@ -62,7 +72,7 @@ struct Rabbit
 	int GhostTurn = 0;
 	int MaxGhostTurn = 5;
 
-	// TODO: Implement mother
+	// TODO: Use a pointer to check if the mother is still alive
 	string MotherName = "TempName";
 
 	const static int MaxAge = 10;
@@ -74,12 +84,8 @@ struct Rabbit
 	const static int VampireHungry = 4;
 
 	// Constructors 
-	Rabbit() : Age(0), Gender(static_cast<EGender>(rand() % 2)),
-		Color(static_cast<EColor>(rand() % static_cast<int>(EColor::Count)))
-	{}
+	Rabbit() = delete;
 
-	Rabbit(EColor color) : Age(0), Gender(static_cast<EGender>(rand() % 2))
-	{}
 
 	Rabbit(EColor color, bool vampire, string motherName) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
 		Color(color), Vampire(vampire), MotherName(motherName)
@@ -92,9 +98,7 @@ struct Rabbit
 	void SetRandomName()
 	{
 		if (Gender == EGender::Male) // there is a way to check what's value has this Gender on runtime wihtout cout?
-
 		{
-
 			randomindex = rand() % NamesMale.size();
 			Name = NamesMale[randomindex];
 			//cout << "\n" << Name;
@@ -134,9 +138,12 @@ struct Fox
 
 	const static int MaxAge = 20;
 	const static int HuntAge = 2;
-	// TODO: This has to be haunted, not infected
 	// TODO: Add names
-	// TODO: For haunted foxes, print their ghost
+	// TODO: For haunted foxes, keep a pointer to their ghost
+	// - what happens if the pointer to the rabbit becomes invalid before the fox has died?
+	// 1. ...
+	// 2. ...
+	// 3. ...
 	int HauntedTurn = 0;
 	const static int MaxHauntedTurn = 5;
 	bool Breeded = false;
@@ -199,36 +206,18 @@ struct World
 		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
 			{
 				return rabbit.Vampire;
-			}
-	);
-		/*
-		for (const Rabbit& rabbit : RabbitColony)
-		{
-			if (rabbit.Vampire)
-			{
-				return true;
-			}
-		}
-		return false;
-		cout << "No Vampire rabbit";
-		*/
+			});
 	}
+
 	void VampireRabbitInfection() 
 	{
 		if (CheckForVampireRabbit())
 		{
 			//Check for Vampire Rabbit Number
-			int VampireRabbit = 0;
-			for (const Rabbit& rabbit : RabbitColony)
-			{
-				if (rabbit.Vampire)
-				{
-					VampireRabbit++;
-				}
-			}
+			const int VampireRabbitCount = TotalVampireRabbit();
 
 			int TotalRabbitInfected = 0;
-			for (int x=0; x <= VampireRabbit; x++)
+			for (int i=0; i <= VampireRabbitCount; i++)
 			{
 				// 1. Always infect the first non-vampire
 				// + always finding a target to infect, no need to loop
@@ -259,7 +248,8 @@ struct World
 	
 	void CheckForMaxRabbit() 
 	{	
-		if (RabbitColony.size() >= MaxRabbits) {
+		if (RabbitColony.size() >= MaxRabbits)
+		{
 			cout << "\nTotal rabbit: " << RabbitColony.size() << "\n";
 			cout << "\nToo much rabbits, low food. Killing half colony.. \n";
 
@@ -335,39 +325,35 @@ struct World
 	
 	void GrassGrown() 
 	{
-		if (Grass.Quantity+10 <= Grass.MaxQuantity)
-		{
-			Grass.Quantity = Grass.Quantity+10;
-		}
-		else 
-		{
-			Grass.Quantity = Grass.MaxQuantity;
-		}
+		Grass.Quantity = std::min(Grass.Quantity + 10, Grass.MaxQuantity);
 	}
 
 	void CheckForEnoughGrass() 
 	{
 		int NecessaryFood = 0;
 		std::vector<Rabbit>& Colony = RabbitColony;
+		// TODO: Turn into lambda; std::accumulate
 		for (const Rabbit& rabbit : Colony)
 		{
 			NecessaryFood = NecessaryFood + rabbit.Hungry;
 		}
 
-		if (Grass.Quantity < NecessaryFood)
+		if (NecessaryFood >= Grass.Quantity)
 		{
-			cout << "\nNot enough grass for rabbits. Some rabbit will die.";
-			int FoodDifference = NecessaryFood - Grass.Quantity;
-			int FoodToEat = 0;
-			for (int i = 0; i < FoodDifference && !Colony.empty(); i++, FoodDifference -= FoodToEat)
-			{
-				int RandomRabbitIndex = rand() % Colony.size();
+			return;
+		}
 
-				Rabbit& Rabbit = Colony[RandomRabbitIndex];
-				FoodToEat = Rabbit.Hungry;
-				Colony.erase(Colony.begin() + RandomRabbitIndex);
-				cout << "\nA Rabbit is dead for starving..";
-			}
+		cout << "\nNot enough grass for rabbits. Some rabbit will die.";
+		int FoodDifference = NecessaryFood - Grass.Quantity;
+		int FoodToEat = 0;
+		for (int i = 0; i < FoodDifference && !Colony.empty(); i++, FoodDifference -= FoodToEat)
+		{
+			int RandomRabbitIndex = rand() % Colony.size();
+
+			const Rabbit& Rabbit = Colony[RandomRabbitIndex];
+			FoodToEat = Rabbit.Hungry;
+			Colony.erase(Colony.begin() + RandomRabbitIndex);
+			cout << "\nA Rabbit is dead for starving..";
 		}
 	}
 	 
@@ -375,7 +361,6 @@ struct World
 	{
 	}
 
-	
 	int TotalVampireRabbit() const
 	{
 		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
@@ -392,63 +377,55 @@ struct World
 			});
 	}
 
-	
-	
 	void KillRabbit(Fox&, Rabbit&)
 	{
-
-
 	}
 
 	int RandomChance(int chance)
 	{
-		int randomvalue = rand() % 100 <= chance;
+		int randomvalue = rand() % 100 < chance;
 		return randomvalue;
 	}
-	
+
 	void FoxEat()
 	{
 		bool EnoughFood = RabbitColony.size() > RabbitColony.size();
-		
-		
 		if (!EnoughFood)
 		{
 			FoxesHaveLowFood();
 		}
 
-		
-	
 		for (int i = 0; i < FoxColony.size(); i++)
 		{
 			int RandomRabbitIndex = rand() % RabbitColony.size();
 			Rabbit& rabbit = RabbitColony[RandomRabbitIndex];
 			
-			if (FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost())
+			const bool IsFoxHuntingGhostRabbit = FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost();
+			if (!IsFoxHuntingGhostRabbit)
 			{
-				if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
-				{
-					// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
-					// TODO: Move chance code to a function - RandomChance(50), RandomChance(30) <--  DONE
-					
-					
-					int RandomRabbitIndex2 = rand() % RabbitColony.size();
-					Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
-					rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
-					RabbitGhostColony.push_back(rabbit2);// <-- what i'm doing here? moving from vector to vector o coping it? There are two same rabbit in two different vector?
-					//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex2); <-- causing crash!
-					cout << "\nA Rabbit is turned to ghost.";
-				}
-
-				rabbit.GhostTurn = rabbit.MaxGhostTurn;
-				RabbitGhostColony.push_back(rabbit);
-				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- like the prev comment
+				continue;
+			}
+			if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
+			{
+				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
+				// TODO: Move chance code to a function - RandomChance(50), RandomChance(30) <--  DONE
+				int RandomRabbitIndex2 = rand() % RabbitColony.size();
+				Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
+				rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
+				RabbitGhostColony.push_back(rabbit2);// <-- what i'm doing here? moving from vector to vector o coping it? There are two same rabbit in two different vector?
+				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex2); <-- causing crash!
 				cout << "\nA Rabbit is turned to ghost.";
+			}
 
-				FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
-				if (rabbit.Vampire && RandomChance(30))
-				{
-					FoxColony.erase(FoxColony.begin() + i);
-				}
+			rabbit.GhostTurn = rabbit.MaxGhostTurn;
+			RabbitGhostColony.push_back(rabbit);
+			//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- like the prev comment
+			cout << "\nA Rabbit is turned to ghost.";
+
+			FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
+			if (rabbit.Vampire && RandomChance(30))
+			{
+				FoxColony.erase(FoxColony.begin() + i);
 			}
 		}
 	}
@@ -457,6 +434,7 @@ struct World
 	{
 		for (Fox& malefox : FoxColony)
 		{
+			// TODO: Invert condition to save indent
 			if ((malefox.Gender == EGender::Male) 
 				&& (!malefox.Breeded) 
 				&& (malefox.HauntedTurn!=0)
@@ -487,16 +465,14 @@ struct World
 	void DecreaseInfection()
 	{
 		for (Rabbit& rabbit : RabbitColony)
-
-			{
-				(rabbit.GhostTurn > 0) ? rabbit.GhostTurn-- : rabbit.GhostTurn;
-			}
+		{
+			rabbit.GhostTurn = std::min(rabbit.GhostTurn - 1, 0);
+		}
 
 		for (Fox& fox : FoxColony)
-
-			{
-				(fox.HauntedTurn > 0) ? fox.HauntedTurn-- : fox.HauntedTurn;
-			}
+		{
+			fox.HauntedTurn = std::min(fox.HauntedTurn - 1, 0);
+		}
 		
 	}
 
@@ -506,39 +482,38 @@ struct World
 		const bool isThereAMaleRabbit = CheckForMaleRabbit();
 		for (int i = 0; i < RabbitColony.size(); ++i)
 		{
-			const Rabbit& rabbit = RabbitColony[i];
+			const Rabbit& parentRabbit = RabbitColony[i];
 
 			// Rabbits death
 			const bool ShouldDie =
-				(rabbit.Age >= Rabbit::MaxAge && !rabbit.Vampire) ||
-				(rabbit.Age >= Rabbit::VampireMaxAge && rabbit.Vampire);
+				(parentRabbit.Age >= Rabbit::MaxAge && !parentRabbit.Vampire) ||
+				(parentRabbit.Age >= Rabbit::VampireMaxAge && parentRabbit.Vampire);
 
 			if (ShouldDie)
 			{
+				const string& Name = parentRabbit.Name;
 				
-				string Name = rabbit.Name;
-				
-				cout << "A rabbit named " << Name << " is dead!Vampire ? " << rabbit.Vampire << "\n";
+				cout << "A rabbit named " << Name << " is dead!Vampire ? " << parentRabbit.Vampire << "\n";
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
 			}
 
 			// Rabbits breeding
 
-			const bool ShouldGiveBirth = isThereAMaleRabbit &&
-				rabbit.Age >= Rabbit::MinAdulthoodAge &&
-				rabbit.Gender == EGender::Female &&
-				!rabbit.Vampire;
+			const bool ShouldGiveBirth = !ShouldDie && isThereAMaleRabbit &&
+				parentRabbit.Age >= Rabbit::MinAdulthoodAge &&
+				parentRabbit.Gender == EGender::Female &&
+				!parentRabbit.Vampire;
 
 			if (ShouldGiveBirth)
 			{
-				const bool ShouldSpawnVampire = RandomChance(2); // (rand() % 100) + 1 <= 2 <--  why + 1 ?? was that wrong? if is a bool shoul have 0 or 1. 
-				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire,rabbit.Name));
+				const bool ShouldSpawnVampire = RandomChance(2);
+				RabbitColony.push_back(Rabbit(parentRabbit.Color, ShouldSpawnVampire, parentRabbit.Name));
 				// cout << "\nMom Rabbit name " << rabbit.Name;
 
-				string Name = " ";
-				//if (!rabbit.Name.empty()) { Name = rabbit.Name; }
-				cout << "\bA baby rabbit named " /* << Name */ << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
+				const Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
+
+				cout << "\bA baby rabbit named "  << babyRabbit.Name << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
 			}
 		}
 	}
