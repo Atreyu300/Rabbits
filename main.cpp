@@ -137,8 +137,8 @@ struct Fox
 	// TODO: This has to be haunted, not infected
 	// TODO: Add names
 	// TODO: For haunted foxes, print their ghost
-	int InfectionTurn = 0;
-	const static int MaxInfectionTurn = 5;
+	int HauntedTurn = 0;
+	const static int MaxHauntedTurn = 5;
 	bool Breeded = false;
 	const static int MinAdulthoodAge = 2;
 
@@ -193,10 +193,16 @@ struct World
 				return rabbit.Gender == EGender::Male && !rabbit.Vampire;
 			});
 	}
-
-	bool CheckForVampireRabbit() const 
+	// My first lambda
+	bool CheckForVampireRabbit() const
 	{
-		for (const Rabbit& rabbit : RabbitColony) 
+		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+			{
+				return rabbit.Vampire;
+			}
+	);
+		/*
+		for (const Rabbit& rabbit : RabbitColony)
 		{
 			if (rabbit.Vampire)
 			{
@@ -205,7 +211,7 @@ struct World
 		}
 		return false;
 		cout << "No Vampire rabbit";
-
+		*/
 	}
 	void VampireRabbitInfection() 
 	{
@@ -329,11 +335,16 @@ struct World
 	
 	void GrassGrown() 
 	{
-		if (Grass.Quantity <= Grass.MaxQuantity)
+		if (Grass.Quantity+10 <= Grass.MaxQuantity)
 		{
-			Grass.Quantity++;
+			Grass.Quantity = Grass.Quantity+10;
+		}
+		else 
+		{
+			Grass.Quantity = Grass.MaxQuantity;
 		}
 	}
+
 	void CheckForEnoughGrass() 
 	{
 		int NecessaryFood = 0;
@@ -381,26 +392,45 @@ struct World
 			});
 	}
 
+	
+	
+	void KillRabbit(Fox&, Rabbit&)
+	{
+
+
+	}
+
+	int RandomChance(int chance)
+	{
+		int randomvalue = rand() % 100 <= chance;
+		return randomvalue;
+	}
+	
 	void FoxEat()
 	{
 		bool EnoughFood = RabbitColony.size() > RabbitColony.size();
+		
+		
 		if (!EnoughFood)
 		{
 			FoxesHaveLowFood();
 		}
+
+		
 	
-		for (int i = 0; i < FoxColony.size(); i++) // <-- moved to usual for because i was not able to find object reference. Does TArray help on that?
-			//(Fox& fox : FoxColony) <-- THIS ONLY WORKS IF YOU DON'T MODIFY THE VECTOR
+		for (int i = 0; i < FoxColony.size(); i++)
 		{
 			int RandomRabbitIndex = rand() % RabbitColony.size();
-			Rabbit& rabbit = RabbitColony[RandomRabbitIndex]; // what's happen if i taking this random rabbit and the rabbit2 is deleted? that random can be not the same anymore?
+			Rabbit& rabbit = RabbitColony[RandomRabbitIndex];
 			
 			if (FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost())
 			{
-				if (Grass.Quantity < Grass.MaxQuantity*20/100 && rand() % 100 < 50)
+				if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
 				{
 					// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
-					// TODO: Move chance code to a function - RandomChance(50), RandomChance(30)
+					// TODO: Move chance code to a function - RandomChance(50), RandomChance(30) <--  DONE
+					
+					
 					int RandomRabbitIndex2 = rand() % RabbitColony.size();
 					Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
 					rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
@@ -411,11 +441,11 @@ struct World
 
 				rabbit.GhostTurn = rabbit.MaxGhostTurn;
 				RabbitGhostColony.push_back(rabbit);
-				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- ??
+				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- like the prev comment
 				cout << "\nA Rabbit is turned to ghost.";
 
-				FoxColony[i].InfectionTurn = FoxColony[i].MaxInfectionTurn;
-				if (rabbit.Vampire && (rand() % 100 < 30))
+				FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
+				if (rabbit.Vampire && RandomChance(30))
 				{
 					FoxColony.erase(FoxColony.begin() + i);
 				}
@@ -429,14 +459,14 @@ struct World
 		{
 			if ((malefox.Gender == EGender::Male) 
 				&& (!malefox.Breeded) 
-				&& (malefox.InfectionTurn!=0)
+				&& (malefox.HauntedTurn!=0)
 				&& (malefox.Age >=malefox.MinAdulthoodAge))
 			{
 				for (Fox& femalefox : FoxColony)
 				{
 					if ((femalefox.Gender == EGender::Female) 
 						&& (!femalefox.Breeded)
-						&& (femalefox.InfectionTurn!=0)
+						&& (femalefox.HauntedTurn!=0)
 						&& (femalefox.Age >= femalefox.MinAdulthoodAge))
 					{
 						malefox.Breeded = true;
@@ -465,7 +495,7 @@ struct World
 		for (Fox& fox : FoxColony)
 
 			{
-				(fox.InfectionTurn > 0) ? fox.InfectionTurn-- : fox.InfectionTurn;
+				(fox.HauntedTurn > 0) ? fox.HauntedTurn-- : fox.HauntedTurn;
 			}
 		
 	}
@@ -502,11 +532,9 @@ struct World
 
 			if (ShouldGiveBirth)
 			{
-				const bool ShouldSpawnVampire = (rand() % 100) + 1 <= 2;
+				const bool ShouldSpawnVampire = RandomChance(2); // (rand() % 100) + 1 <= 2 <--  why + 1 ?? was that wrong? if is a bool shoul have 0 or 1. 
 				RabbitColony.push_back(Rabbit(rabbit.Color, ShouldSpawnVampire,rabbit.Name));
 				// cout << "\nMom Rabbit name " << rabbit.Name;
-
-
 
 				string Name = " ";
 				//if (!rabbit.Name.empty()) { Name = rabbit.Name; }
@@ -524,7 +552,6 @@ struct World
 			{
 				x++;
 			}
-			
 
 		return x;
 	} 
@@ -622,7 +649,6 @@ int main()
 
 	
 	
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
