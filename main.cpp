@@ -4,6 +4,9 @@
 #include <vector>
 #include <ctime>
 #include <chrono>
+#include <functional>
+#include <string>
+#include <numeric>
 #include <thread>
 
 // TODO:
@@ -79,9 +82,7 @@ struct Rabbit
 	const static int MinAdulthoodAge = 2;
 	const static int VampireMaxAge = 50;
 	
-	int Hungry = ((Vampire) ? 2 : 4);
-
-	const static int VampireHungry = 4;
+	int Hungry = ((Vampire) ? 4 : 2);
 
 	// Constructors 
 	Rabbit() = delete;
@@ -90,7 +91,7 @@ struct Rabbit
 	Rabbit(EColor color, bool vampire, string motherName) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
 		Color(color), Vampire(vampire), MotherName(motherName)
 	{
-		SetRandomName(); // Only females??
+		SetRandomName();
 	}
 
 	// Functions 
@@ -110,8 +111,6 @@ struct Rabbit
 			//cout << "\n" << Name;
 		}
 	}
-
-
 
 	bool IsGhost() const
 	{
@@ -149,7 +148,6 @@ struct Fox
 	bool Breeded = false;
 	const static int MinAdulthoodAge = 2;
 
-
 };
 
 struct Grass 
@@ -171,7 +169,7 @@ struct World
 	std::vector<Rabbit> RabbitColony;
 	std::vector<Fox> FoxColony;
 	std::vector<Rabbit>RabbitGhostColony;
-	Grass Grass; // Should i use the same name for struct and variable?
+	Grass Grass;								// **************** Should i use the same name for struct and variable? ************************
 
 	int Turn;
 	const int MaxRabbits = 1000;
@@ -180,17 +178,31 @@ struct World
 	{
 	}
 
-	
-	void IncreaseAnimalsAge()
+	void IncreaseAnimalsAge()								 // ************CONVERTED FOR in FOR_EACH****************
 	{
-		for (Rabbit& rabbit : RabbitColony)
+		
+		std::for_each(RabbitColony.begin(), RabbitColony.end(), [](Rabbit& rabbit) 
+			{
+				rabbit.Age++;
+			});
+
+		std:for_each(FoxColony.begin(), FoxColony.end(), [](Fox& fox) 
+		{
+				fox.Age++;
+		});
+
+		// prev code (To delete)
+
+		/*for (Rabbit& rabbit : RabbitColony)
 		{
 			rabbit.Age++;
 		}
+		
 		for (Fox& fox : FoxColony) {
 
 			fox.Age++;
 		}
+		*/
 	}
 
 	bool CheckForMaleRabbit() const
@@ -200,7 +212,7 @@ struct World
 				return rabbit.Gender == EGender::Male && !rabbit.Vampire;
 			});
 	}
-	// My first lambda
+	
 	bool CheckForVampireRabbit() const
 	{
 		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
@@ -275,14 +287,19 @@ struct World
 	}
 	
 
-	void RabbitEating() 
+	void RabbitEat() 
 	{
 		for (Rabbit& rabbit : RabbitColony)
 		{
-			Grass.Quantity = std::max(0, Grass.Quantity - rabbit.Hungry);
+			if (rabbit.GhostTurn != 0) 
+			{
+				Grass.Quantity = std::max(0, Grass.Quantity - rabbit.Hungry);
+			}
 		}
-		
 	}
+
+
+
 	void DecreasingRabbitGhostTurn()
 	{
 		auto removalIt = std::remove_if(RabbitGhostColony.begin(), RabbitGhostColony.end(), [](Rabbit& rabbit)
@@ -332,13 +349,25 @@ struct World
 	{
 		int NecessaryFood = 0;
 		std::vector<Rabbit>& Colony = RabbitColony;
-		// TODO: Turn into lambda; std::accumulate
-		for (const Rabbit& rabbit : Colony)
+		/*
 		{
-			NecessaryFood = NecessaryFood + rabbit.Hungry;
+			return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+				{
+					return rabbit.Vampire;
+				});
 		}
+		*/
 
-		if (NecessaryFood >= Grass.Quantity)
+		// TODO: Turn into lambda; std::accumulate									************************DONE************************
+		
+		auto NecessaryFoodSum = [](int sum, const Rabbit& rabbit)
+			{
+				return sum + rabbit.Hungry;
+			};
+		NecessaryFood = std::accumulate(Colony.begin(), Colony.end(), 0, NecessaryFoodSum);
+		cout << "\nNecessaryFood: " << NecessaryFood << " ";
+		
+		if (NecessaryFood <= Grass.Quantity)
 		{
 			return;
 		}
@@ -408,18 +437,16 @@ struct World
 			if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
 			{
 				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
-				// TODO: Move chance code to a function - RandomChance(50), RandomChance(30) <--  DONE
+				
 				int RandomRabbitIndex2 = rand() % RabbitColony.size();
 				Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
 				rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
-				RabbitGhostColony.push_back(rabbit2);// <-- what i'm doing here? moving from vector to vector o coping it? There are two same rabbit in two different vector?
-				//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex2); <-- causing crash!
+				RabbitGhostColony.push_back(rabbit2);
 				cout << "\nA Rabbit is turned to ghost.";
 			}
 
 			rabbit.GhostTurn = rabbit.MaxGhostTurn;
 			RabbitGhostColony.push_back(rabbit);
-			//RabbitColony.erase(RabbitColony.begin() + RandomRabbitIndex); <-- like the prev comment
 			cout << "\nA Rabbit is turned to ghost.";
 
 			FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
@@ -473,7 +500,6 @@ struct World
 		{
 			fox.HauntedTurn = std::min(fox.HauntedTurn - 1, 0);
 		}
-		
 	}
 
 	
@@ -493,7 +519,7 @@ struct World
 			{
 				const string& Name = parentRabbit.Name;
 				
-				cout << "A rabbit named " << Name << " is dead!Vampire ? " << parentRabbit.Vampire << "\n";
+				cout << "\nA rabbit named " << Name << " is dead!Vampire ? " << parentRabbit.Vampire;
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
 			}
@@ -513,7 +539,7 @@ struct World
 
 				const Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
 
-				cout << "\bA baby rabbit named "  << babyRabbit.Name << " is born!Vampire ? " << ShouldSpawnVampire << "\n"; // crash?!
+				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born!Vampire ? " << ShouldSpawnVampire ; // crash?!
 			}
 		}
 	}
@@ -533,9 +559,6 @@ struct World
 
 	void Tick()
 	{
-		
-
-
 		// Check if Rabbit colony is empty
 		if (RabbitColony.empty()) {
 
@@ -551,7 +574,7 @@ struct World
 		CheckForEnoughGrass();
 
 		RabbitLifeCycle();
-		RabbitEating();
+		RabbitEat();
 				
 		FoxBreeding();
 		FoxEat();
@@ -559,12 +582,7 @@ struct World
 		VampireRabbitInfection();
 		IncreaseAnimalsAge();
 		
-
-		// TODO: Don't increase the age of the newborn babies - they should stay at 0 - DONE
-
-
 		Turn++;
-
 	}
 
 	void Print() const
@@ -622,8 +640,6 @@ int main()
 	// Populating Colony
 	GWorld = new World();
 
-	
-	
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
 	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
@@ -639,7 +655,7 @@ int main()
 	
 	/*
 
-	// | Rabbit0 | Rabbit1 | Rabbit 2 | Rabbit3
+
 	// b.Mother = &GWorld->RabbitColony[1];
 	Rabbit r1;
 	Rabbit r2;
@@ -659,13 +675,11 @@ int main()
 	// Timer Next Turn
 	while (true)
 	{
-		// Print for first Turn
 		if (GWorld->Turn == 0) {
-			cout << "\n Start a new colony pressing 'n'";
+			cout << "\nStart a new colony pressing 'n'";
 		}
-		// Print for next Turns
 		else {
-			cout << "\n Press 'n' to move to the next turn";
+			cout << "\n\nPress key 'n' to move to the next turn..";
 		}
 		inputkey = _getch();
 
@@ -689,5 +703,4 @@ int main()
 	}
 		delete GWorld;
 		return 0;
-	
 }
