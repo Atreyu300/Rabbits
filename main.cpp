@@ -76,7 +76,8 @@ struct Rabbit
 	int MaxGhostTurn = 5;
 
 	// TODO: Use a pointer to check if the mother is still alive
-	string MotherName = "TempName";
+	Rabbit* Mother = nullptr; // What's happen when it's born in the beginning without mother?? will be not valid? *******************
+					// Not valid mother pointer can be our condition to check if mother still alive?? **********************
 
 	const static int MaxAge = 10;
 	const static int MinAdulthoodAge = 2;
@@ -88,8 +89,8 @@ struct Rabbit
 	Rabbit() = delete;
 
 
-	Rabbit(EColor color, bool vampire, string motherName) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
-		Color(color), Vampire(vampire), MotherName(motherName)
+	Rabbit(EColor color, bool vampire) : Age(0), Gender(static_cast<EGender>(rand() % 2)),
+		Color(color), Vampire(vampire)
 	{
 		SetRandomName();
 	}
@@ -133,7 +134,9 @@ struct Fox
 	EGender Gender;
 
 	Fox() : Age(0), Gender(static_cast<EGender>(rand()% 2))
-	{}
+	{
+		SetRandomName();
+	}
 
 	const static int MaxAge = 20;
 	const static int HuntAge = 2;
@@ -147,6 +150,24 @@ struct Fox
 	const static int MaxHauntedTurn = 5;
 	bool Breeded = false;
 	const static int MinAdulthoodAge = 2;
+	int randomindex;
+	string Name;
+
+	void SetRandomName()
+	{
+		if (Gender == EGender::Male) // there is a way to check what's value has this Gender on runtime wihtout cout?
+		{
+			randomindex = rand() % NamesMale.size();
+			Name = NamesMale[randomindex];
+			//cout << "\n" << Name;
+		}
+		else
+		{
+			randomindex = rand() % NamesFemale.size();
+			Name = NamesFemale[randomindex];
+			//cout << "\n" << Name;
+		}
+	}
 
 };
 
@@ -385,11 +406,7 @@ struct World
 			cout << "\nA Rabbit is dead for starving..";
 		}
 	}
-	 
-	void OnRabbitDied(Rabbit)
-	{
-	}
-
+	
 	int TotalVampireRabbit() const
 	{
 		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
@@ -415,6 +432,20 @@ struct World
 		int randomvalue = rand() % 100 < chance;
 		return randomvalue;
 	}
+	void RabbitBecomeGhost(Fox& fox, Rabbit& rabbit)
+	{
+		rabbit.GhostTurn = rabbit.MaxGhostTurn;
+		RabbitGhostColony.push_back(rabbit);
+		Rabbit& RabbitGhost = RabbitGhostColony[RabbitGhostColony.size() - 1];
+
+		cout << "\nA Rabbit named " << RabbitGhost.Name << " is turned to ghost. ";
+		if (RabbitGhost.Mother!=nullptr)
+		{
+			cout << RabbitGhost.Mother->Name << " is looking for revenge!";
+			return;
+		}
+		cout << "No one is looking for revenge!";
+	};
 
 	void FoxEat()
 	{
@@ -428,6 +459,7 @@ struct World
 		{
 			int RandomRabbitIndex = rand() % RabbitColony.size();
 			Rabbit& rabbit = RabbitColony[RandomRabbitIndex];
+			Fox& fox = FoxColony[i];
 			
 			const bool IsFoxHuntingGhostRabbit = FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost();
 			if (!IsFoxHuntingGhostRabbit)
@@ -436,19 +468,21 @@ struct World
 			}
 			if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
 			{
-				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code
+				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code ********DONE**********
 				
 				int RandomRabbitIndex2 = rand() % RabbitColony.size();
 				Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
-				rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
+				RabbitBecomeGhost(fox, rabbit2);
+				/*rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
 				RabbitGhostColony.push_back(rabbit2);
 				cout << "\nA Rabbit is turned to ghost.";
+				*/
 			}
-
-			rabbit.GhostTurn = rabbit.MaxGhostTurn;
+			RabbitBecomeGhost(fox, rabbit);
+			/*rabbit.GhostTurn = rabbit.MaxGhostTurn;
 			RabbitGhostColony.push_back(rabbit);
 			cout << "\nA Rabbit is turned to ghost.";
-
+			*/
 			FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
 			if (rabbit.Vampire && RandomChance(30))
 			{
@@ -457,7 +491,7 @@ struct World
 		}
 	}
 
-	void FoxBreeding() 
+	void FoxBreed() 
 	{
 		for (Fox& malefox : FoxColony)
 		{
@@ -477,6 +511,8 @@ struct World
 						malefox.Breeded = true;
 						femalefox.Breeded = true;
 						FoxColony.push_back(Fox());
+						const Fox& BabyFox = FoxColony[FoxColony.size() - 1];
+						cout << "\nA baby Fox named " << BabyFox.Name << " is born!";
 					}
 				}
 			}
@@ -501,32 +537,33 @@ struct World
 			fox.HauntedTurn = std::min(fox.HauntedTurn - 1, 0);
 		}
 	}
-
-	
-	void RabbitLifeCycle() 
+	void RabbitDie()
 	{
-		const bool isThereAMaleRabbit = CheckForMaleRabbit();
 		for (int i = 0; i < RabbitColony.size(); ++i)
 		{
-			const Rabbit& parentRabbit = RabbitColony[i];
+			Rabbit& parentRabbit = RabbitColony[i];
 
-			// Rabbits death
 			const bool ShouldDie =
 				(parentRabbit.Age >= Rabbit::MaxAge && !parentRabbit.Vampire) ||
 				(parentRabbit.Age >= Rabbit::VampireMaxAge && parentRabbit.Vampire);
-
 			if (ShouldDie)
 			{
 				const string& Name = parentRabbit.Name;
-				
 				cout << "\nA rabbit named " << Name << " is dead!Vampire ? " << parentRabbit.Vampire;
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
 			}
+		}
+	}
+	
+	void RabbitBreed() 
+	{
+		const bool isThereAMaleRabbit = CheckForMaleRabbit();
+		for (int i = 0; i < RabbitColony.size(); ++i)
+		{
+			 Rabbit& parentRabbit = RabbitColony[i];
 
-			// Rabbits breeding
-
-			const bool ShouldGiveBirth = !ShouldDie && isThereAMaleRabbit &&
+			const bool ShouldGiveBirth = isThereAMaleRabbit &&
 				parentRabbit.Age >= Rabbit::MinAdulthoodAge &&
 				parentRabbit.Gender == EGender::Female &&
 				!parentRabbit.Vampire;
@@ -534,17 +571,21 @@ struct World
 			if (ShouldGiveBirth)
 			{
 				const bool ShouldSpawnVampire = RandomChance(2);
-				RabbitColony.push_back(Rabbit(parentRabbit.Color, ShouldSpawnVampire, parentRabbit.Name));
+				RabbitColony.push_back(Rabbit(parentRabbit.Color, ShouldSpawnVampire));
 				// cout << "\nMom Rabbit name " << rabbit.Name;
+				
 
-				const Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
-
-				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born!Vampire ? " << ShouldSpawnVampire ; // crash?!
+				Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
+				
+					//babyRabbit.Mother = &parentRabbit;
+				//	cout << "\nParent name " << parentRabbit.Name;
+				
+				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born from mother "/* << babyRabbit.Mother->Name*/ << " !Vampire ? " << ShouldSpawnVampire;
 			}
 		}
 	}
 
-	// Unused// Unused?
+	//  Unused?
 	int RabbitColonyWithoutGhosts() 
 	{
 		int x = 0;
@@ -572,11 +613,12 @@ struct World
 
 		GrassGrown();
 		CheckForEnoughGrass();
-
-		RabbitLifeCycle();
+		
+		RabbitDie();
+		RabbitBreed();
 		RabbitEat();
 				
-		FoxBreeding();
+		FoxBreed();
 		FoxEat();
 
 		VampireRabbitInfection();
@@ -640,11 +682,11 @@ int main()
 	// Populating Colony
 	GWorld = new World();
 
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false, "God"));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
 
 	GWorld->FoxColony.push_back(Fox());
 	GWorld->FoxColony.push_back(Fox());
