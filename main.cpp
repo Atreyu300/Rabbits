@@ -187,7 +187,7 @@ class World* GWorld;
 
 struct World
 {
-	std::vector<Rabbit> RabbitColony;
+	std::vector<Rabbit*> RabbitColony;
 	std::vector<Fox> FoxColony;
 	std::vector<Rabbit>RabbitGhostColony;
 	Grass Grass;								// **************** Should i use the same name for struct and variable? ************************
@@ -332,7 +332,26 @@ struct World
 				}
 				return false;
 			});
+
 		RabbitGhostColony.erase(removalIt, RabbitGhostColony.end());
+		/* Pointer fun times
+		Rabbit* m = new Rabbit(EColor::Black, false);
+		Rabbit* b = new Rabbit(EColor::Black, false);
+		b->Mother = m;
+		delete m;
+		for (Rabbit& r : RabbitColony)
+		{
+			if (r.Mother == m)
+			{
+				r.Mother = nullptr;
+			}
+		}
+		b->Mother = nullptr;
+		if (b->Mother != nullptr)
+		{
+			cout << "Rabbit " << b->Name << " is mourning the loss of his mother " << b->Mother->Name;
+		}
+		*/
 
 		/* CODE ABOVE EQUIVALENT TO CODE BELOW
 		for (int i = 0; i < RabbitGhostColony.size(); i++)
@@ -571,16 +590,21 @@ struct World
 			if (ShouldGiveBirth)
 			{
 				const bool ShouldSpawnVampire = RandomChance(2);
-				RabbitColony.push_back(Rabbit(parentRabbit.Color, ShouldSpawnVampire));
+				RabbitColony.push_back(new Rabbit(parentRabbit.Color, ShouldSpawnVampire));
 				// cout << "\nMom Rabbit name " << rabbit.Name;
 				
 
 				Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
 				
-					//babyRabbit.Mother = &parentRabbit;
+				babyRabbit.Mother = &parentRabbit;
+				babyRabbit.Mother = 
 				//	cout << "\nParent name " << parentRabbit.Name;
 				
-				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born from mother "/* << babyRabbit.Mother->Name*/ << " !Vampire ? " << ShouldSpawnVampire;
+				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born from mother " << babyRabbit.Mother->Name << " !Vampire ? " << ShouldSpawnVampire;
+				if (cout.bad())
+				{
+					cout.clear();
+				}
 			}
 		}
 	}
@@ -589,8 +613,8 @@ struct World
 	int RabbitColonyWithoutGhosts() 
 	{
 		int x = 0;
-		for (Rabbit& rabbit : RabbitColony)
-			if (rabbit.GhostTurn>=1)
+		for (Rabbit* rabbit : RabbitColony)
+			if (rabbit->GhostTurn>=1)
 			{
 				x++;
 			}
@@ -682,11 +706,11 @@ int main()
 	// Populating Colony
 	GWorld = new World();
 
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
-	GWorld->RabbitColony.push_back(Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
+	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
 
 	GWorld->FoxColony.push_back(Fox());
 	GWorld->FoxColony.push_back(Fox());
