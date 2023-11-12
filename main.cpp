@@ -1,3 +1,4 @@
+
 #include <algorithm>
 #include <iostream>
 #include <conio.h>
@@ -8,6 +9,8 @@
 #include <string>
 #include <numeric>
 #include <thread>
+
+
 
 // TODO:
 // - Read on lambdas
@@ -188,9 +191,9 @@ class World* GWorld;
 struct World
 {
 	std::vector<Rabbit*> RabbitColony;
-	std::vector<Fox> FoxColony;
-	std::vector<Rabbit>RabbitGhostColony;
-	Grass Grass;								// **************** Should i use the same name for struct and variable? ************************
+	std::vector<Fox*> FoxColony;
+	std::vector<Rabbit*>RabbitGhostColony;
+	Grass Grass;								
 
 	int Turn;
 	const int MaxRabbits = 1000;
@@ -199,46 +202,32 @@ struct World
 	{
 	}
 
-	void IncreaseAnimalsAge()								 // ************CONVERTED FOR in FOR_EACH****************
+	void IncreaseAnimalsAge()					
 	{
-		
-		std::for_each(RabbitColony.begin(), RabbitColony.end(), [](Rabbit& rabbit) 
+		std::for_each(RabbitColony.begin(), RabbitColony.end(), [](Rabbit* rabbit) 
 			{
-				rabbit.Age++;
+				rabbit->Age++;
 			});
 
-		std:for_each(FoxColony.begin(), FoxColony.end(), [](Fox& fox) 
+		std:for_each(FoxColony.begin(), FoxColony.end(), [](Fox* fox) 
 		{
-				fox.Age++;
+				fox->Age++;
 		});
-
-		// prev code (To delete)
-
-		/*for (Rabbit& rabbit : RabbitColony)
-		{
-			rabbit.Age++;
-		}
-		
-		for (Fox& fox : FoxColony) {
-
-			fox.Age++;
-		}
-		*/
 	}
 
 	bool CheckForMaleRabbit() const
 	{
-		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit* rabbit)
 			{
-				return rabbit.Gender == EGender::Male && !rabbit.Vampire;
+				return rabbit->Gender == EGender::Male && !rabbit->Vampire;
 			});
 	}
 	
 	bool CheckForVampireRabbit() const
 	{
-		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+		return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit* rabbit)
 			{
-				return rabbit.Vampire;
+				return rabbit->Vampire;
 			});
 	}
 
@@ -268,9 +257,9 @@ struct World
 				// Option 3:
 				int RandomRabbitIndex = RandomRabbitIndex = (rand() % RabbitColony.size());
 				
-				if (!RabbitColony[RandomRabbitIndex].Vampire)
+				if (&RabbitColony[RandomRabbitIndex]->Vampire)
 				{
-					RabbitColony[RandomRabbitIndex].Vampire = true;
+					RabbitColony[RandomRabbitIndex]->Vampire = true;
 					TotalRabbitInfected++;
 				}
 
@@ -310,11 +299,11 @@ struct World
 
 	void RabbitEat() 
 	{
-		for (Rabbit& rabbit : RabbitColony)
+		for (Rabbit* rabbit : RabbitColony)
 		{
-			if (rabbit.GhostTurn != 0) 
+			if (&rabbit->GhostTurn != 0) 
 			{
-				Grass.Quantity = std::max(0, Grass.Quantity - rabbit.Hungry);
+				Grass.Quantity = std::max(0, Grass.Quantity - rabbit->Hungry);
 			}
 		}
 	}
@@ -323,16 +312,21 @@ struct World
 
 	void DecreasingRabbitGhostTurn()
 	{
-		auto removalIt = std::remove_if(RabbitGhostColony.begin(), RabbitGhostColony.end(), [](Rabbit& rabbit)
+		auto removalIt = std::remove_if(RabbitGhostColony.begin(), RabbitGhostColony.end(), [](Rabbit* rabbit)
 			{
-				if (rabbit.IsGhost())
+				if (rabbit->IsGhost())
 				{
-					rabbit.GhostTurn--;
-					return rabbit.GhostTurn == 0;
+					rabbit->GhostTurn--;
+					if (rabbit->GhostTurn == 0) {
+						delete &rabbit;
+					return true;
+					}
+					
 				}
 				return false;
 			});
 
+		
 		RabbitGhostColony.erase(removalIt, RabbitGhostColony.end());
 		/* Pointer fun times
 		Rabbit* m = new Rabbit(EColor::Black, false);
@@ -388,7 +382,7 @@ struct World
 	void CheckForEnoughGrass() 
 	{
 		int NecessaryFood = 0;
-		std::vector<Rabbit>& Colony = RabbitColony;
+		std::vector<Rabbit*>& Colony = RabbitColony;
 		/*
 		{
 			return std::any_of(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
@@ -400,9 +394,9 @@ struct World
 
 		// TODO: Turn into lambda; std::accumulate									************************DONE************************
 		
-		auto NecessaryFoodSum = [](int sum, const Rabbit& rabbit)
+		auto NecessaryFoodSum = [](int sum, const Rabbit* rabbit)
 			{
-				return sum + rabbit.Hungry;
+				return sum + rabbit->Hungry;
 			};
 		NecessaryFood = std::accumulate(Colony.begin(), Colony.end(), 0, NecessaryFoodSum);
 		cout << "\nNecessaryFood: " << NecessaryFood << " ";
@@ -419,8 +413,8 @@ struct World
 		{
 			int RandomRabbitIndex = rand() % Colony.size();
 
-			const Rabbit& Rabbit = Colony[RandomRabbitIndex];
-			FoodToEat = Rabbit.Hungry;
+			const Rabbit* Rabbit = Colony[RandomRabbitIndex];
+			FoodToEat = Rabbit->Hungry;
 			Colony.erase(Colony.begin() + RandomRabbitIndex);
 			cout << "\nA Rabbit is dead for starving..";
 		}
@@ -428,17 +422,17 @@ struct World
 	
 	int TotalVampireRabbit() const
 	{
-		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit* rabbit)
 			{
-				return rabbit.Vampire;
+				return rabbit->Vampire;
 			});
 	}
 
 	int TotalGhostRabbit() const
 	{
-		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit& rabbit)
+		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit* rabbit)
 			{
-				return rabbit.IsGhost();
+				return rabbit->IsGhost();
 			});
 	}
 
@@ -451,16 +445,16 @@ struct World
 		int randomvalue = rand() % 100 < chance;
 		return randomvalue;
 	}
-	void RabbitBecomeGhost(Fox& fox, Rabbit& rabbit)
+	void RabbitBecomeGhost(Fox* fox, Rabbit* rabbit)
 	{
-		rabbit.GhostTurn = rabbit.MaxGhostTurn;
+		rabbit->GhostTurn = rabbit->MaxGhostTurn;
 		RabbitGhostColony.push_back(rabbit);
-		Rabbit& RabbitGhost = RabbitGhostColony[RabbitGhostColony.size() - 1];
+		Rabbit* RabbitGhost = RabbitGhostColony[RabbitGhostColony.size() - 1];
 
-		cout << "\nA Rabbit named " << RabbitGhost.Name << " is turned to ghost. ";
-		if (RabbitGhost.Mother!=nullptr)
+		cout << "\nA Rabbit named " << RabbitGhost->Name << " is turned to ghost. ";
+		if (RabbitGhost->Mother!=nullptr)
 		{
-			cout << RabbitGhost.Mother->Name << " is looking for revenge!";
+			cout << RabbitGhost->Mother->Name << " is looking for revenge!";
 			return;
 		}
 		cout << "No one is looking for revenge!";
@@ -477,10 +471,10 @@ struct World
 		for (int i = 0; i < FoxColony.size(); i++)
 		{
 			int RandomRabbitIndex = rand() % RabbitColony.size();
-			Rabbit& rabbit = RabbitColony[RandomRabbitIndex];
-			Fox& fox = FoxColony[i];
+			Rabbit* rabbit = RabbitColony[RandomRabbitIndex];
+			Fox* fox = FoxColony[i];
 			
-			const bool IsFoxHuntingGhostRabbit = FoxColony[i].Age >= FoxColony[i].HuntAge && rabbit.IsGhost();
+			const bool IsFoxHuntingGhostRabbit = FoxColony[i]->Age >= FoxColony[i]->HuntAge && rabbit->IsGhost();
 			if (!IsFoxHuntingGhostRabbit)
 			{
 				continue;
@@ -490,7 +484,7 @@ struct World
 				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code ********DONE**********
 				
 				int RandomRabbitIndex2 = rand() % RabbitColony.size();
-				Rabbit& rabbit2 = RabbitColony[RandomRabbitIndex2];
+				Rabbit* rabbit2 = RabbitColony[RandomRabbitIndex2];
 				RabbitBecomeGhost(fox, rabbit2);
 				/*rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
 				RabbitGhostColony.push_back(rabbit2);
@@ -502,73 +496,74 @@ struct World
 			RabbitGhostColony.push_back(rabbit);
 			cout << "\nA Rabbit is turned to ghost.";
 			*/
-			FoxColony[i].HauntedTurn = FoxColony[i].MaxHauntedTurn;
-			if (rabbit.Vampire && RandomChance(30))
+			FoxColony[i]->HauntedTurn = FoxColony[i]->MaxHauntedTurn;
+			if (rabbit->Vampire && RandomChance(30))
 			{
 				FoxColony.erase(FoxColony.begin() + i);
 			}
 		}
 	}
 
-	void FoxBreed() 
+	void FoxBreed()
 	{
-		for (Fox& malefox : FoxColony)
+		for (int i = 0; i >= FoxColony.size(); i++)
 		{
-			// TODO: Invert condition to save indent
-			if ((malefox.Gender == EGender::Male) 
-				&& (!malefox.Breeded) 
-				&& (malefox.HauntedTurn!=0)
-				&& (malefox.Age >=malefox.MinAdulthoodAge))
+			Fox* malefox = FoxColony[i];
+			if ((malefox->Gender == EGender::Male)
+				&& (!malefox->Breeded)
+				&& (malefox->HauntedTurn != 0)
+				&& (malefox->Age >= malefox->MinAdulthoodAge))
 			{
-				for (Fox& femalefox : FoxColony)
+				for (int j = 0; j >= FoxColony.size(); j++)
 				{
-					if ((femalefox.Gender == EGender::Female) 
-						&& (!femalefox.Breeded)
-						&& (femalefox.HauntedTurn!=0)
-						&& (femalefox.Age >= femalefox.MinAdulthoodAge))
+					Fox* femalefox = FoxColony[i];
+					if ((femalefox->Gender == EGender::Female)
+						&& (!femalefox->Breeded)
+						&& (femalefox->HauntedTurn != 0)
+						&& (femalefox->Age >= femalefox->MinAdulthoodAge))
 					{
-						malefox.Breeded = true;
-						femalefox.Breeded = true;
-						FoxColony.push_back(Fox());
-						const Fox& BabyFox = FoxColony[FoxColony.size() - 1];
-						cout << "\nA baby Fox named " << BabyFox.Name << " is born!";
+						malefox->Breeded = true;
+						femalefox->Breeded = true;
+						FoxColony.push_back(new Fox());
+						const Fox* BabyFox = FoxColony[FoxColony.size() - 1];
+						cout << "\nA baby Fox named " << BabyFox->Name << " is born!";
 					}
 				}
 			}
 		}
-		for (Fox& fox : FoxColony) 
+		for (Fox* fox : FoxColony) 
 		{
-			fox.Breeded = false;
+			fox->Breeded = false;
 		}
-		
 	}
 
 
 	void DecreaseInfection()
 	{
-		for (Rabbit& rabbit : RabbitColony)
+		for (Rabbit* rabbit : RabbitColony)
 		{
-			rabbit.GhostTurn = std::min(rabbit.GhostTurn - 1, 0);
+			rabbit->GhostTurn = std::min(rabbit->GhostTurn - 1, 0);
 		}
 
-		for (Fox& fox : FoxColony)
+		for (Fox* fox : FoxColony)
 		{
-			fox.HauntedTurn = std::min(fox.HauntedTurn - 1, 0);
+			fox->HauntedTurn = std::min(fox->HauntedTurn - 1, 0);
 		}
 	}
 	void RabbitDie()
 	{
 		for (int i = 0; i < RabbitColony.size(); ++i)
 		{
-			Rabbit& parentRabbit = RabbitColony[i];
+			Rabbit* parentRabbit = RabbitColony[i];
 
 			const bool ShouldDie =
-				(parentRabbit.Age >= Rabbit::MaxAge && !parentRabbit.Vampire) ||
-				(parentRabbit.Age >= Rabbit::VampireMaxAge && parentRabbit.Vampire);
+				(parentRabbit->Age >= Rabbit::MaxAge && !parentRabbit->Vampire) ||
+				(parentRabbit->Age >= Rabbit::VampireMaxAge && parentRabbit->Vampire);
 			if (ShouldDie)
 			{
-				const string& Name = parentRabbit.Name;
-				cout << "\nA rabbit named " << Name << " is dead!Vampire ? " << parentRabbit.Vampire;
+				const string& Name = parentRabbit->Name;
+				cout << "\nA rabbit named " << Name << " is dead!Vampire ? " << parentRabbit->Vampire;
+				parentRabbit = nullptr;
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
 			}
@@ -580,7 +575,7 @@ struct World
 		const bool isThereAMaleRabbit = CheckForMaleRabbit();
 		for (int i = 0; i < RabbitColony.size(); ++i)
 		{
-			 Rabbit& parentRabbit = RabbitColony[i];
+			 Rabbit& parentRabbit = *RabbitColony[i];
 
 			const bool ShouldGiveBirth = isThereAMaleRabbit &&
 				parentRabbit.Age >= Rabbit::MinAdulthoodAge &&
@@ -594,10 +589,10 @@ struct World
 				// cout << "\nMom Rabbit name " << rabbit.Name;
 				
 
-				Rabbit& babyRabbit = RabbitColony[RabbitColony.size() - 1];
+				Rabbit& babyRabbit = *RabbitColony[RabbitColony.size() - 1];
 				
 				babyRabbit.Mother = &parentRabbit;
-				babyRabbit.Mother = 
+				//babyRabbit.Mother = 
 				//	cout << "\nParent name " << parentRabbit.Name;
 				
 				cout << "\nA baby rabbit named "  << babyRabbit.Name << " is born from mother " << babyRabbit.Mother->Name << " !Vampire ? " << ShouldSpawnVampire;
@@ -712,11 +707,11 @@ int main()
 	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
 	GWorld->RabbitColony.push_back(new Rabbit((static_cast<EColor>(rand() % 2)), false));
 
-	GWorld->FoxColony.push_back(Fox());
-	GWorld->FoxColony.push_back(Fox());
-	GWorld->FoxColony.push_back(Fox());
-	GWorld->FoxColony.push_back(Fox());
-	GWorld->FoxColony.push_back(Fox());
+	GWorld->FoxColony.push_back(new Fox());
+	GWorld->FoxColony.push_back(new Fox());
+	GWorld->FoxColony.push_back(new Fox());
+	GWorld->FoxColony.push_back(new Fox());
+	GWorld->FoxColony.push_back(new Fox());
 
 	
 	/*
