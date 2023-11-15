@@ -10,8 +10,6 @@
 #include <numeric>
 #include <thread>
 
-
-
 // TODO:
 // - Read on lambdas
 // - Read on pointers
@@ -76,7 +74,7 @@ struct Rabbit
 	string Name = "TempName";
 	
 	int GhostTurn = 0;
-	int MaxGhostTurn = 5;
+	int MaxGhostTurn = 11;
 
 	// TODO: Use a pointer to check if the mother is still alive
 	Rabbit* Mother = nullptr; // What's happen when it's born in the beginning without mother?? will be not valid? *******************
@@ -123,11 +121,23 @@ struct Rabbit
 
 	// SendAnalytics("New Rabbit");
 	
-	/*~Rabbit()
+	void OnGhostRabbitDeath() const
 	{
-		cout << "destruct ";
+		if (!Mother)
+		{
+			return;
+		}
+		cout << "\nMother " << Mother->Name << " finally accepts the death of " << Name;
+		if (cout.bad())
+		{
+			cout.clear();
+		}
 	}
-	*/
+
+	~Rabbit()
+	{
+
+	}
 };
 
 struct Fox 
@@ -155,6 +165,11 @@ struct Fox
 	const static int MinAdulthoodAge = 2;
 	int randomindex;
 	string Name;
+
+	bool GetIsHuntingAge() const
+	{
+		return Age >= HuntAge;
+	}
 
 	void SetRandomName()
 	{
@@ -257,7 +272,7 @@ struct World
 				// Option 3:
 				int RandomRabbitIndex = RandomRabbitIndex = (rand() % RabbitColony.size());
 				
-				if (&RabbitColony[RandomRabbitIndex]->Vampire)
+				if (!RabbitColony[RandomRabbitIndex]->Vampire)
 				{
 					RabbitColony[RandomRabbitIndex]->Vampire = true;
 					TotalRabbitInfected++;
@@ -324,8 +339,9 @@ struct World
 				{
 					rabbit->GhostTurn--;
 					if (rabbit->GhostTurn == 0) {
-						delete &rabbit;
-					return true;
+						rabbit->OnGhostRabbitDeath();
+						delete rabbit;
+						return true;
 					}
 					
 				}
@@ -436,10 +452,7 @@ struct World
 
 	int TotalGhostRabbit() const
 	{
-		return std::count_if(RabbitColony.begin(), RabbitColony.end(), [](const Rabbit* rabbit)
-			{
-				return rabbit->IsGhost();
-			});
+		return RabbitGhostColony.size();
 	}
 
 	void KillRabbit(Fox&, Rabbit&)
@@ -451,9 +464,11 @@ struct World
 		int randomvalue = rand() % 100 < chance;
 		return randomvalue;
 	}
-	void RabbitBecomeGhost(Fox* fox, Rabbit* rabbit)
+	void TransferRabbitToGhost(Fox* fox, Rabbit* rabbit)
 	{
 		rabbit->GhostTurn = rabbit->MaxGhostTurn;
+		auto it = std::find(RabbitColony.begin(), RabbitColony.end(), rabbit);
+		RabbitColony.erase(it);
 		RabbitGhostColony.push_back(rabbit);
 		Rabbit* RabbitGhost = RabbitGhostColony[RabbitGhostColony.size() - 1];
 
@@ -480,24 +495,29 @@ struct World
 			Rabbit* rabbit = RabbitColony[RandomRabbitIndex];
 			Fox* fox = FoxColony[i];
 			
-			const bool IsFoxHuntingGhostRabbit = FoxColony[i]->Age >= FoxColony[i]->HuntAge && rabbit->IsGhost();
-			if (!IsFoxHuntingGhostRabbit)
+			if (!fox->GetIsHuntingAge() || rabbit->IsGhost())
 			{
 				continue;
 			}
+			if (RandomChance(85))
+			{
+				continue;
+			}
+
+			TransferRabbitToGhost(fox, rabbit);
+
 			if (Grass.Quantity < Grass.MaxQuantity*20/100 && RandomChance(50))
 			{
 				// TODO: Make a new function KillRabbit(Fox&, Rabbit&) and call it twice instead of copy/pasting code ********DONE**********
 				
 				int RandomRabbitIndex2 = rand() % RabbitColony.size();
 				Rabbit* rabbit2 = RabbitColony[RandomRabbitIndex2];
-				RabbitBecomeGhost(fox, rabbit2);
+				TransferRabbitToGhost(fox, rabbit2);
 				/*rabbit2.GhostTurn = rabbit2.MaxGhostTurn;
 				RabbitGhostColony.push_back(rabbit2);
 				cout << "\nA Rabbit is turned to ghost.";
 				*/
 			}
-			RabbitBecomeGhost(fox, rabbit);
 			/*rabbit.GhostTurn = rabbit.MaxGhostTurn;
 			RabbitGhostColony.push_back(rabbit);
 			cout << "\nA Rabbit is turned to ghost.";
@@ -759,6 +779,8 @@ int main()
 		else {
 			cout << "\n\nPress key 'n' to move to the next turn..";
 		}
+		//std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+		//inputkey = 'n';
 		inputkey = _getch();
 
 		if (inputkey == 'n')
