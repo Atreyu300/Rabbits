@@ -196,7 +196,7 @@ struct World
 	Grass Grass;								
 
 	int Turn;
-	const int MaxRabbits = 1000;
+	const int MaxRabbits = 50;
 
 	World() : Turn(0)
 	{
@@ -264,7 +264,7 @@ struct World
 				}
 
 			}
-			cout << TotalRabbitInfected << " Rabbit infected!";
+			cout << "\n" << TotalRabbitInfected << " Rabbit infected!";
 		}
 	}
 	
@@ -278,7 +278,11 @@ struct World
 			int HalfColony = RabbitColony.size() / 2;
 			for (int i = 0; i < HalfColony; i++)
 			{
-				RabbitColony.erase(RabbitColony.begin() + (rand() % RabbitColony.size()));
+				int RandomPosition = (rand() % RabbitColony.size());
+				// cout << "Killing Rabbit in position: " << RandomPosition;
+				delete RabbitColony[RandomPosition];    // deleting pointer from memory
+				RabbitColony[RandomPosition] = nullptr;    // set on nullptr
+				RabbitColony.erase(RabbitColony.begin() + (RandomPosition)); // erase object on vector
 			}
 			cout << "\nTotal rabbit: " << RabbitColony.size() << "\n";
 		}
@@ -291,7 +295,9 @@ struct World
 		for (int i = 0; i < MissingFood; i++) 
 		{
 			int CasualFox = rand() % FoxColony.size();
-			FoxColony.erase(FoxColony.begin() + CasualFox);
+			delete FoxColony[CasualFox]; // cleaning memory
+			FoxColony[CasualFox] = nullptr; // set variable to nullptr
+			FoxColony.erase(FoxColony.begin() + CasualFox); // erasing variable from vector
 			cout << "\nA Fox is dead by starving..";
 		}
 	}
@@ -327,7 +333,7 @@ struct World
 			});
 
 		
-		RabbitGhostColony.erase(removalIt, RabbitGhostColony.end());
+		RabbitGhostColony.erase(removalIt, RabbitGhostColony.end()); // <-- is this correct?
 		/* Pointer fun times
 		Rabbit* m = new Rabbit(EColor::Black, false);
 		Rabbit* b = new Rabbit(EColor::Black, false);
@@ -506,20 +512,22 @@ struct World
 
 	void FoxBreed()
 	{
-		for (int i = 0; i >= FoxColony.size(); i++)
+		
+		for (int i = 0; i < FoxColony.size(); i++)
 		{
-			Fox* malefox = FoxColony[i];
+  			Fox* malefox = FoxColony[i];
+
 			if ((malefox->Gender == EGender::Male)
 				&& (!malefox->Breeded)
-				&& (malefox->HauntedTurn != 0)
+				&& (malefox->HauntedTurn == 0)
 				&& (malefox->Age >= malefox->MinAdulthoodAge))
 			{
-				for (int j = 0; j >= FoxColony.size(); j++)
+				for (int j = 0; j < FoxColony.size(); j++)
 				{
-					Fox* femalefox = FoxColony[i];
+					Fox* femalefox = FoxColony[j];
 					if ((femalefox->Gender == EGender::Female)
 						&& (!femalefox->Breeded)
-						&& (femalefox->HauntedTurn != 0)
+						&& (femalefox->HauntedTurn == 0)
 						&& (femalefox->Age >= femalefox->MinAdulthoodAge))
 					{
 						malefox->Breeded = true;
@@ -563,6 +571,7 @@ struct World
 			{
 				const string& Name = parentRabbit->Name;
 				cout << "\nA rabbit named " << Name << " is dead!Vampire ? " << parentRabbit->Vampire;
+				cout << "\nis the same vampire? " << (parentRabbit == RabbitColony[i]);
 				parentRabbit = nullptr;
 				RabbitColony.erase(RabbitColony.begin() + i);
 				i--;
@@ -622,12 +631,13 @@ struct World
 		// Check if Rabbit colony is empty
 		if (RabbitColony.empty()) {
 
-			cout << "The rabbit colony is dead!";
+			cout << "\nThe rabbit colony is dead!";
 			exit;
 		}
 		
-		DecreaseInfection();
-		
+		//DecreaseInfection();
+		DecreasingRabbitGhostTurn();
+
 		CheckForMaxRabbit();
 
 		GrassGrown();
@@ -713,7 +723,14 @@ int main()
 	GWorld->FoxColony.push_back(new Fox());
 	GWorld->FoxColony.push_back(new Fox());
 
-	
+
+	/*
+	for (Fox* fox : GWorld->FoxColony)
+	{
+		cout << fox->Gender;
+	}
+
+	*/
 	/*
 
 
